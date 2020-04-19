@@ -55,7 +55,7 @@ main.get("/download", async (req, res) => {
 });
 
 main.get("/db", async (req, res) => {
-	const pool = new Pool({ connectionString: process.env.DB_CONNECTION, ssl: true });
+	const pool = new Pool({ connectionString: process.env.DATABASE_ALTERNATIVO, ssl: true });
 	const client = await pool.connect();
 	const result = await client.query("select * from ciao");
 	client.release();
