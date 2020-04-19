@@ -5,14 +5,18 @@ const { Pool } = require("pg");
 
 const admin = require("firebase-admin");
 
-const serviceAccount = require("./serviceAccountKey.json");
-
 // Initialize dotenv
 require("dotenv").config();
 
+const serviceAccount = {
+	project_id: process.env.PROJECT_ID,
+	private_key: process.env.PRIVATE_KEY.replace(/\\n/g, "\n"),
+	client_email: process.env.CLIENT_EMAIL,
+};
+
 admin.initializeApp({
 	credential: admin.credential.cert(serviceAccount),
-	storageBucket: "meet-box.appspot.com",
+	storageBucket: process.env.STORAGE,
 });
 
 const bucket = admin.storage().bucket();
@@ -45,7 +49,6 @@ main.post("/upload", async (req, res) => {
 
 main.get("/download", async (req, res) => {
 	const file = bucket.file("ciao.txt");
-	console.log(file);
 	const stream = file.createReadStream();
 	res.attachment("ciao.txt");
 	stream.pipe(res);
@@ -59,4 +62,6 @@ main.get("/db", async (req, res) => {
 	res.status(200).send({ data: result.rows });
 });
 
-main.listen(process.env.PORT, () => console.log("Server created"));
+main.listen(process.env.PORT, () => {
+	console.log("Server created");
+});
