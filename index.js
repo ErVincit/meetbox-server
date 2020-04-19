@@ -1,9 +1,9 @@
-const express = require('express');
+const express = require("express");
 const main = express();
 
-const { Pool } = require('pg');
+const { Pool } = require("pg");
 
-const admin = require('firebase-admin');
+const admin = require("firebase-admin");
 
 const serviceAccount = require("./serviceAccountKey.json");
 
@@ -11,8 +11,8 @@ const serviceAccount = require("./serviceAccountKey.json");
 require("dotenv").config();
 
 admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    storageBucket: "meet-box.appspot.com"
+	credential: admin.credential.cert(serviceAccount),
+	storageBucket: "meet-box.appspot.com",
 });
 
 const bucket = admin.storage().bucket();
@@ -20,7 +20,7 @@ const bucket = admin.storage().bucket();
 const bodyParser = require("body-parser");
 const fileUpload = require("express-fileupload");
 
-main.use(bodyParser.urlencoded({extended: true}))
+main.use(bodyParser.urlencoded({ extended: true }));
 main.use(fileUpload());
 
 main.get("/", (req, res) => {
@@ -33,30 +33,30 @@ main.get("/", (req, res) => {
 });
 
 main.post("/upload", async (req, res) => {
-    for (const name in req.files) {
-        const file = req.files[name];
-        const filename = file.name;
-        const data = file.data;
-        const fbFile = bucket.file(filename);
-        await fbFile.save(data);
-    }
-    res.send({ msg: "Ok"});
+	for (const name in req.files) {
+		const file = req.files[name];
+		const filename = file.name;
+		const data = file.data;
+		const fbFile = bucket.file(filename);
+		await fbFile.save(data);
+	}
+	res.send({ msg: "Ok" });
 });
 
 main.get("/download", async (req, res) => {
-    const file = bucket.file("ciao.txt");
-    console.log(file);
-    const stream = file.createReadStream();
-    res.attachment("ciao.txt");
-    stream.pipe(res);
+	const file = bucket.file("ciao.txt");
+	console.log(file);
+	const stream = file.createReadStream();
+	res.attachment("ciao.txt");
+	stream.pipe(res);
 });
 
 main.get("/db", async (req, res) => {
-    const pool = new Pool({ connectionString: process.env.DB_CONNECTION, ssl: true });
-    const client = await pool.connect();
-    const result = await client.query("select * from ciao");
-    client.release();
-    res.status(200).send({ data: result.rows });
+	const pool = new Pool({ connectionString: process.env.DB_CONNECTION, ssl: true });
+	const client = await pool.connect();
+	const result = await client.query("select * from ciao");
+	client.release();
+	res.status(200).send({ data: result.rows });
 });
 
-main.listen(8080, () => console.log("Server created"));
+main.listen(process.env.PORT, () => console.log("Server created"));
