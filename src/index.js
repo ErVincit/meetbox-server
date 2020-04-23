@@ -1,12 +1,14 @@
 const express = require("express");
 const main = express();
 
-const { Pool } = require("pg");
-
+const pool = require("./database");
 const admin = require("firebase-admin");
 
 // Initialize dotenv
 require("dotenv").config();
+
+const api = require('./api/api');
+main.use('/api', api);
 
 const serviceAccount = {
 	project_id: process.env.PROJECT_ID,
@@ -55,8 +57,6 @@ main.get("/download", async (req, res) => {
 });
 
 main.get("/db", async (req, res) => {
-	const pool = new Pool({ connectionString: process.env.DATABASE_ALTERNATIVO, ssl: true });
-	const client = await pool.connect();
 	const result = await client.query("select * from ciao");
 	client.release();
 	res.status(200).send({ data: result.rows });
