@@ -1,11 +1,13 @@
+// Initialize dotenv
+require("dotenv").config();
+
 const express = require("express");
 const main = express();
 
 const pool = require("./database");
 const admin = require("firebase-admin");
+main.use(express.json());
 
-// Initialize dotenv
-require("dotenv").config();
 
 const api = require('./api/api');
 main.use('/api', api);
