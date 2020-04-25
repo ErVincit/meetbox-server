@@ -4,66 +4,65 @@ require("dotenv").config();
 const express = require("express");
 const main = express();
 
-const pool = require("./database");
-const admin = require("firebase-admin");
+main.use(express.urlencoded({ extended: true }));
 main.use(express.json());
 
+const api = require("./api/api");
+main.use("/api", api);
 
-const api = require('./api/api');
-main.use('/api', api);
+// const admin = require("firebase-admin");
+// const serviceAccount = {
+//   project_id: process.env.PROJECT_ID,
+//   private_key: process.env.PRIVATE_KEY.replace(/\\n/g, "\n"),
+//   client_email: process.env.CLIENT_EMAIL,
+// };
 
-const serviceAccount = {
-	project_id: process.env.PROJECT_ID,
-	private_key: process.env.PRIVATE_KEY.replace(/\\n/g, "\n"),
-	client_email: process.env.CLIENT_EMAIL,
-};
+// admin.initializeApp({
+//   credential: admin.credential.cert(serviceAccount),
+//   storageBucket: process.env.STORAGE,
+// });
 
-admin.initializeApp({
-	credential: admin.credential.cert(serviceAccount),
-	storageBucket: process.env.STORAGE,
-});
+// const bucket = admin.storage().bucket();
 
-const bucket = admin.storage().bucket();
+// const fileUpload = require("express-fileupload");
 
-const bodyParser = require("body-parser");
-const fileUpload = require("express-fileupload");
+// main.use(fileUpload());
 
-main.use(bodyParser.urlencoded({ extended: true }));
-main.use(fileUpload());
+// main.get("/", (req, res) => {
+//   res.writeHead(200, { "Content-Type": "text/html" });
+//   res.write(
+//     '<form action="upload" method="post" enctype="multipart/form-data">'
+//   );
+//   res.write('<input type="file" name="filetoupload"><br>');
+//   res.write('<input type="submit">');
+//   res.write("</form>");
+//   return res.end();
+// });
 
-main.get("/", (req, res) => {
-	res.writeHead(200, { "Content-Type": "text/html" });
-	res.write('<form action="upload" method="post" enctype="multipart/form-data">');
-	res.write('<input type="file" name="filetoupload"><br>');
-	res.write('<input type="submit">');
-	res.write("</form>");
-	return res.end();
-});
+// main.post("/upload", async (req, res) => {
+//   for (const name in req.files) {
+//     const file = req.files[name];
+//     const filename = file.name;
+//     const data = file.data;
+//     const fbFile = bucket.file(filename);
+//     await fbFile.save(data);
+//   }
+//   res.send({ msg: "Ok" });
+// });
 
-main.post("/upload", async (req, res) => {
-	for (const name in req.files) {
-		const file = req.files[name];
-		const filename = file.name;
-		const data = file.data;
-		const fbFile = bucket.file(filename);
-		await fbFile.save(data);
-	}
-	res.send({ msg: "Ok" });
-});
+// main.get("/download", async (req, res) => {
+//   const file = bucket.file("ciao.txt");
+//   const stream = file.createReadStream();
+//   res.attachment("ciao.txt");
+//   stream.pipe(res);
+// });
 
-main.get("/download", async (req, res) => {
-	const file = bucket.file("ciao.txt");
-	const stream = file.createReadStream();
-	res.attachment("ciao.txt");
-	stream.pipe(res);
-});
-
-main.get("/db", async (req, res) => {
-	const result = await client.query("select * from ciao");
-	client.release();
-	res.status(200).send({ data: result.rows });
-});
+// main.get("/db", async (req, res) => {
+//   const result = await client.query("select * from ciao");
+//   client.release();
+//   res.status(200).send({ data: result.rows });
+// });
 
 main.listen(process.env.PORT, () => {
-	console.log("Server created");
+  console.log("Server created");
 });
