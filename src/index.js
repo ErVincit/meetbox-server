@@ -2,10 +2,21 @@
 require("dotenv").config();
 
 const express = require("express");
+const cookieSession = require("cookie-session");
 const main = express();
 
 main.use(express.urlencoded({ extended: true }));
 main.use(express.json());
+main.use(
+	cookieSession({
+		name: "token",
+		secret: process.env.SESSION_SECRET,
+		cookie: {
+			httpOnly: true,
+			secure: true,
+		},
+	})
+);
 
 const api = require("./api/api");
 main.use("/api", api);
@@ -64,5 +75,5 @@ main.use("/api", api);
 // });
 
 main.listen(process.env.PORT, () => {
-  console.log("Server created");
+	console.log("Server created");
 });

@@ -1,10 +1,10 @@
 const express = require("express");
-const app = express();
+const router = express.Router();
 
 const login = require("./controllers/login");
-app.use("/login", login);
+router.use("/login", login);
 
-const calendar = require("./controllers/calendar");
-app.use("/calendar", calendar);
+const workgroup = require("./controllers/workgroup");
+router.use("/workgroup", workgroup);
 
-module.exports = app;
+module.exports = router;
