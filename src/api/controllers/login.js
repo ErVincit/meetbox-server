@@ -17,10 +17,10 @@ router.post("/", async (req, res, next) => {
 	}
 });
 
-router.post("/validate", async (req, res, next) => {
+router.get("/validate", async (req, res, next) => {
 	const token = req.session.token;
-	if (token) res.sendStatus(200); // OK
-	res.sendStatus(401);
+	if (token) return res.sendStatus(200);
+	return res.sendStatus(401);
 });
 
 router.post("/registration", async (req, res) => {
