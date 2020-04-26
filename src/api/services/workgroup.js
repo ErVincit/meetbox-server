@@ -35,7 +35,7 @@ exports.deleteWorkgroup = async (userId, workgroupId) => {
 	await client.query('DELETE FROM "UserWorkGroup" WHERE userid = $1 AND workgroup = $2', [userId, workgroupId]);
 	const results = await client.query('DELETE FROM "WorkGroup" WHERE id = $1 RETURNING *', [workgroupId]);
 	client.release();
-	return results.rows;
+	return results.rows[0];
 };
 
 exports.addMember = async (userId, workgroupId, memberId) => {

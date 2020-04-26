@@ -6,7 +6,7 @@ const workgroupService = require("../services/workgroup");
 // Get all the workgroups
 router.get("/", async (req, res) => {
 	try {
-		const userId = 1;
+		const userId = req.currentUser;
 		const workgroups = await workgroupService.getAllWorkgroups(userId);
 		res.json({ data: workgroups });
 	} catch (err) {
@@ -17,7 +17,7 @@ router.get("/", async (req, res) => {
 // Create workgroup
 router.post("/", async (req, res) => {
 	try {
-		const userId = 1;
+		const userId = req.currentUser;
 		const { name, image } = req.body;
 		const workgroup = await workgroupService.createWorkgroup(userId, name, image);
 		res.json({ data: workgroup });
@@ -30,7 +30,7 @@ router.post("/", async (req, res) => {
 router.get("/:idWorkgroup", async (req, res) => {
 	try {
 		const { idWorkgroup } = req.params;
-		const userId = 1;
+		const userId = req.currentUser;
 		const workgroup = await workgroupService.getWorkgroup(userId, idWorkgroup);
 		res.json({ data: workgroup });
 	} catch (err) {
@@ -42,7 +42,7 @@ router.get("/:idWorkgroup", async (req, res) => {
 router.delete("/:idWorkgroup", async (req, res) => {
 	try {
 		const { idWorkgroup } = req.params;
-		const userId = 1;
+		const userId = req.currentUser;
 		const workgroup = await workgroupService.deleteWorkgroup(userId, idWorkgroup);
 		res.json({ data: workgroup });
 	} catch (err) {
@@ -54,7 +54,7 @@ router.delete("/:idWorkgroup", async (req, res) => {
 router.put("/:idWorkgroup/member/:idMember", async (req, res) => {
 	try {
 		const { idWorkgroup, idMember } = req.params;
-		const userId = 1;
+		const userId = req.currentUser;
 		await workgroupService.addMember(userId, idWorkgroup, idMember);
 		res.sendStatus(200);
 	} catch (err) {
@@ -66,7 +66,7 @@ router.put("/:idWorkgroup/member/:idMember", async (req, res) => {
 router.delete("/:idWorkgroup/member/:idMember", async (req, res) => {
 	try {
 		const { idWorkgroup, idMember } = req.params;
-		const userId = 1;
+		const userId = req.currentUser;
 		await workgroupService.removeMember(userId, idWorkgroup, idMember);
 		res.sendStatus(200);
 	} catch (err) {
@@ -78,7 +78,7 @@ router.delete("/:idWorkgroup/member/:idMember", async (req, res) => {
 router.get("/:idWorkgroup/member", async (req, res) => {
 	try {
 		const { idWorkgroup } = req.params;
-		const userId = 1;
+		const userId = req.currentUser;
 		const members = await workgroupService.getAllMembers(userId, idWorkgroup);
 		res.json({ data: members });
 	} catch (err) {
