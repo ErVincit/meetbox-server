@@ -56,6 +56,6 @@ exports.getAllMembers = async (userId, workgroupId) => {
 		[workgroupId]
 	);
 	const userFound = result.rows.find((user) => user.id === userId);
-	if (!userFound) throw new Error("L'utente " + userId + " non fa parte dei membri del workgroup");
+	if (!userFound) throw new Error("Non fai parte del workgroup con id " + workgroupId);
 	return result.rows;
 };
