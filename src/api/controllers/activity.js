@@ -3,6 +3,7 @@ const router = express.Router({ mergeParams: true });
 
 const activityService = require("../services/activity");
 
+// Create section
 router.post("/section", async (req, res) => {
 	try {
 		const { idWorkgroup } = req.params;
@@ -15,6 +16,7 @@ router.post("/section", async (req, res) => {
 	}
 });
 
+// Delete section
 router.delete("/section/:idSection", async (req, res) => {
 	try {
 		const { idWorkgroup, idSection } = req.params;
@@ -25,6 +27,7 @@ router.delete("/section/:idSection", async (req, res) => {
 	}
 });
 
+// Change section title
 router.put("/section/:idSection", async (req, res) => {
 	try {
 		const { idWorkgroup, idSection } = req.params;
@@ -36,11 +39,46 @@ router.put("/section/:idSection", async (req, res) => {
 	}
 });
 
+// Get all sections
 router.get("/section", async (req, res) => {
 	try {
 		const { idWorkgroup } = req.params;
 		const sections = await activityService.getAllSections(idWorkgroup, req.currentUser);
 		res.json({ data: sections });
+	} catch (err) {
+		res.json({ error: err.name, message: err.message });
+	}
+});
+
+// Create task
+router.post("/section/:idSection/task", async (req, res) => {
+	try {
+		const { idWorkgroup, idSection } = req.params;
+		const { title, description } = req.body;
+		const task = await activityService.createTask(idSection, idWorkgroup, req.currentUser, title, description);
+		res.json({ data: task });
+	} catch (err) {
+		res.json({ error: err.name, message: err.message });
+	}
+});
+
+// Delete task
+router.delete("/section/:idSection/task/:idTask", async (req, res) => {
+	try {
+		const { idWorkgroup, idSection, idTask } = req.params;
+		const task = await activityService.deleteTask(idTask, idSection, idWorkgroup, req.currentUser);
+		res.json({ data: task });
+	} catch (err) {
+		res.json({ error: err.name, message: err.message });
+	}
+});
+
+// Get all the tasks
+router.get("/section/:idSection/task", async (req, res) => {
+	try {
+		const { idWorkgroup, idSection } = req.params;
+		const tasks = await activityService.getAllTasks(idSection, idWorkgroup, req.currentUser);
+		res.json({ data: tasks });
 	} catch (err) {
 		res.json({ error: err.name, message: err.message });
 	}
