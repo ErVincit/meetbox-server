@@ -5,12 +5,11 @@ exports.login = async (username, password) => {
 	const res = await pool.query(sqlUsernameExists, [username]);
 	if (res.rowCount > 0) {
 		// Confrontare la password dell'utente tramite SQL
-		const sqlPassword = 'SELECT uc.password FROM "UserCredential" uc WHERE uc.userid = $1;';
-		const resPassword = await pool.query(sqlPassword, [res.rows[0].id]);
-		if (resPassword.rowCount > 0 && resPassword.rows[0].password === password) return true;
-		return false;
+		const id = res.rows[0].id;
+		const resPassword = await pool.query('SELECT uc.password FROM "UserCredential" uc WHERE uc.userid = $1;', [id]);
+		if (resPassword.rowCount > 0 && resPassword.rows[0].password === password) return id;
 	}
-	throw new Error("Email e/o password sono errati");
+	throw new Error("Email e/o password sono errati"); 
 };
 
 exports.registration = async (email, firstName, lastName, password) => {

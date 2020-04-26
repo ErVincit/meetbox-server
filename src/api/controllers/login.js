@@ -6,15 +6,15 @@ const loginService = require("../services/login");
 
 router.post("/", async (req, res, next) => {
 	const token = req.session.token;
-	if (token) res.sendStatus(200); // Already logged
+	if (token) return res.status(200).send({msg: 'Sei gia stato loggato. In un implementazione futura sarai ridirezionato alla homepage.'}); // Already logged
 	const { email, password } = req.body;
-	const result = await loginService.login(email, password);
-	if (result) {
-		//Set a good cookie
-		// req.session.token = jwt.sign({result}, );
+	try {
+		const iduser = await loginService.login(email, password);
+		req.session.token = jwt.sign({iduser}, process.env.JWT_SECRET); //Da aggiungere per farlo scadere -> , {expiresIn: 60*x} -> dove x sono i minuti
 		return res.sendStatus(200);
+	} catch (err) {
+		return res.sendStatus(401);
 	}
-	return res.sendStatus(401);
 });
 
 router.post("/validate", async (req, res, next) => {
