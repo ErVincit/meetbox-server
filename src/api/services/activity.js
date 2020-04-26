@@ -67,10 +67,13 @@ exports.createTask = async (sectionId, workgroupId, userId, title, description) 
 		throw new Error(
 			"Operazione fallita. Potresti aver richiesto di inserire un gruppo di lavoro o sezione inesistente oppure di risorse di cui non hai l'accesso"
 		);
+	// Get the last index
+	const result = await client.query('SELECT MAX(index) as max FROM "Task" WHERE section = $1', [sectionId]);
+	const index = result.rowCount == 0 ? 0 : result.rows[0].max + 1;
 	// Create the task
 	const results = await client.query(
-		'INSERT INTO "Task" (title, description, section, owner) VALUES ($1, $2, $3, $4) RETURNING id, title, description',
-		[title, description, sectionId, userId]
+		'INSERT INTO "Task" (title, description, section, index, owner) VALUES ($1, $2, $3, $4, $5) RETURNING id, title, description, index',
+		[title, description, sectionId, index, userId]
 	);
 	client.release();
 	return results.rows[0];
@@ -91,6 +94,7 @@ exports.deleteTask = async (taskId, sectionId, workgroupId, userId) => {
 		);
 	// Delete the task
 	const results = await client.query('DELETE FROM "Task" WHERE id = $1 AND section = $2 RETURNING id, title, description', [taskId, sectionId]);
+	// TODO: SHIFT THE INDEX FOR ALL THE NEXT TASKS
 	client.release();
 	return results.rows[0];
 };
