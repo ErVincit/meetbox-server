@@ -274,10 +274,6 @@ exports.editTask = async (
 			// Add new members
 			for (const member of members) await client.query('INSERT INTO "UserTask" (userid, task) VALUES ($1, $2)', [member, taskId]);
 		}
-		// Edit attachments
-		if (attachments) {
-			// TODO: Edit attachments to implement
-		}
 		// Get the task if not modified
 		if (!task) {
 			const results = await client.query('SELECT * FROM "Task" WHERE id = $1', [taskId]);
