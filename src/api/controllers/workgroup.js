@@ -19,6 +19,8 @@ router.post("/", async (req, res) => {
 	try {
 		const userId = req.currentUser;
 		const { name, image } = req.body;
+		if (!name) throw new Error("E' necessario aggiungere un nome per creare un gruppo di lavoro");
+		if (!image) throw new Error("E' necessario aggiungere un'immagine per creare un gruppo di lavoro");
 		const workgroup = await workgroupService.createWorkgroup(userId, name, image);
 		res.json({ data: workgroup });
 	} catch (err) {

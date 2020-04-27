@@ -32,6 +32,7 @@ router.put("/section/:idSection", async (req, res) => {
 	try {
 		const { idWorkgroup, idSection } = req.params;
 		const { title } = req.body;
+		if (!title) throw new Error("E' necessario aggiungere un titolo per cambiare il titolo di una sezione");
 		const section = await activityService.changeSectionTitle(title, idSection, idWorkgroup, req.currentUser);
 		res.json({ data: section });
 	} catch (err) {
@@ -55,6 +56,8 @@ router.post("/section/:idSection/task", async (req, res) => {
 	try {
 		const { idWorkgroup, idSection } = req.params;
 		const { title, description } = req.body;
+		if (!title) throw new Error("E' necessario aggiungere un titolo per creare un'attività");
+		if (!description) throw new Error("E' necessario aggiungere una descrizione per creare un'attività");
 		const task = await activityService.createTask(idSection, idWorkgroup, req.currentUser, title, description);
 		res.json({ data: task });
 	} catch (err) {
