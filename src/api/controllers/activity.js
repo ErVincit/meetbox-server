@@ -27,8 +27,8 @@ router.delete("/section/:idSection", async (req, res) => {
 	}
 });
 
-// Change section title
-router.put("/section/:idSection", async (req, res) => {
+// Edit section
+router.put("/section/:idSection/edit", async (req, res) => {
 	try {
 		const { idWorkgroup, idSection } = req.params;
 		const { title } = req.body;
@@ -82,6 +82,79 @@ router.get("/section/:idSection/task", async (req, res) => {
 		const { idWorkgroup, idSection } = req.params;
 		const tasks = await activityService.getAllTasks(idSection, idWorkgroup, req.currentUser);
 		res.json({ data: tasks });
+	} catch (err) {
+		res.json({ error: err.name, message: err.message });
+	}
+});
+
+// Edit task
+router.put("/section/:idSection/task/:idTask/edit", async (req, res) => {
+	try {
+		const { idWorkgroup, idSection, idTask } = req.params;
+		const { title, description, label, deadline, section, index, completed, members, attachments } = req.body;
+		const tasks = await activityService.editTask(
+			idTask,
+			idSection,
+			idWorkgroup,
+			req.currentUser,
+			title,
+			description,
+			label,
+			deadline,
+			section,
+			index,
+			completed,
+			members,
+			attachments
+		);
+		res.json({ data: tasks });
+	} catch (err) {
+		res.json({ error: err.name, message: err.message });
+	}
+});
+
+// Create label
+router.post("/label", async (req, res) => {
+	try {
+		const { idWorkgroup } = req.params;
+		const { name, color } = req.body;
+		if (!color) throw new Error("E' necessario aggiungere un colore per creare una label");
+		const label = await activityService.createLabel(idWorkgroup, req.currentUser, name, color);
+		res.json({ data: label });
+	} catch (err) {
+		res.json({ error: err.name, message: err.message });
+	}
+});
+
+// Delete label
+router.delete("/label/:idLabel", async (req, res) => {
+	try {
+		const { idWorkgroup, idLabel } = req.params;
+		const label = await activityService.deleteLabel(idLabel, idWorkgroup, req.currentUser);
+		res.json({ data: label });
+	} catch (err) {
+		res.json({ error: err.name, message: err.message });
+	}
+});
+
+// Get all labels
+router.get("/label", async (req, res) => {
+	try {
+		const { idWorkgroup } = req.params;
+		const label = await activityService.getAllLabels(idWorkgroup, req.currentUser);
+		res.json({ data: label });
+	} catch (err) {
+		res.json({ error: err.name, message: err.message });
+	}
+});
+
+// Edit task
+router.put("/label/:idLabel/edit", async (req, res) => {
+	try {
+		const { idWorkgroup, idLabel } = req.params;
+		const { name, color } = req.body;
+		const label = await activityService.editLabel(idLabel, idWorkgroup, req.currentUser, name, color);
+		res.json({ data: label });
 	} catch (err) {
 		res.json({ error: err.name, message: err.message });
 	}
