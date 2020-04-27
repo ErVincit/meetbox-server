@@ -47,13 +47,15 @@ exports.tree = async (currentUser, workgroup) => {
 }
 
 exports.create = async (currentUser, name, creationDate, isFolder, isNote, path, size, folder, workgroup, task, members) => {
+    //Verificare se l'utente appartiene al workgroup
     if (folder === undefined) folder = null;
     if (task === undefined) task = null;
     try {
         const fatherFolder = await this.getDocument(folder);
         if (Object.keys(fatherFolder).length > 0 && !fatherFolder.isfolder) throw new Error("La cartella padre non è una cartella");
         if (await this.isNameUsed(name, isFolder, folder)) throw new Error("Il nome del file viola in vincolo di unique");
-        const sqlFolder = `INSERT INTO "Document"(name, creationdate, isfolder, isnote, size, folder, workgroup, owner) VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`;
+        const sqlFolder = `INSERT INTO "Document"(name, creationdate, isfolder, isnote, size, folder, workgroup, owner) 
+        VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`;
         try {
             const res = await pool.query(sqlFolder, [name, creationDate, isFolder, isNote, size, folder, workgroup, currentUser]);
             const idDocument = res.rows[0].id;
@@ -66,6 +68,14 @@ exports.create = async (currentUser, name, creationDate, isFolder, isNote, path,
                     console.log(err)
                     throw new Error("Errore setaggio parametri path and size nel database");
                 }
+            }
+            if (task) {
+                const sqlControlTask = `SELECT *
+                FROM "UserWorkGroup" uwg, "Section" s, "Task" t
+                WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND s.workgroup = uwg.workgroup AND t.section = s.id AND t.id = $3`
+                const resultControlTask = await pool.query(sqlControlTask, [currentUser, workgroup, task]);
+                if (resultControlTask.rowCount > 0 && resultControlTask.rows[0].id === task)
+                    await pool.query('UPDATE "Document" SET task = $1 WHERE id = $2', [task, idDocument]);
             }
             await documentService.setAllMembers(currentUser, idDocument, members, workgroup);
             return res.rowCount > 0 ? idDocument : "";

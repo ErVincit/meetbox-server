@@ -29,6 +29,6 @@ router.post('/create', async (req, res, next) => {
     }
 });
 
-router.post('/document', document);
+router.use('/document', document);
 
 module.exports = router;
