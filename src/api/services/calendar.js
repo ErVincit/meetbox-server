@@ -26,7 +26,7 @@ exports.createEvent = async (
   if (timestampEnd)
     await client.query(
       'UPDATE "Event" SET "timestampEnd" = $1 WHERE id = $2;',
-      [timestampEnd, idEvent]
+      [new Date(timestampEnd), idEvent]
     );
   client.release();
   return idEvent;
@@ -65,11 +65,11 @@ exports.updateEvent = async (
   if (timestampBegin)
     await client.query(
       'UPDATE "Event" SET "timestampBegin" = $1 WHERE id = $2',
-      [timestampBegin, idEvent]
+      [new Date(timestampBegin), idEvent]
     );
   if (timestampEnd)
     await client.query('UPDATE "Event" SET "timestampEnd" = $1 WHERE id = $2', [
-      timestampEnd,
+      new Date(timestampEnd),
       idEvent,
     ]);
   if (members) {

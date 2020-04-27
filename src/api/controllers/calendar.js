@@ -32,7 +32,7 @@ app.post("/event", async (req, res) => {
   const id = await calendarService.createEvent(
     title,
     description,
-    timestampBegin,
+    dateBegin,
     timestampEnd,
     workgroup,
     req.currentUser
