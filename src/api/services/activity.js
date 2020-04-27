@@ -6,10 +6,7 @@ exports.createSection = async (title, workgroupId, userId) => {
 	const client = await pool.connect();
 	try {
 		// Check if user is a member of the workgroup
-		const exists = await client.query(
-			'SELECT wg.* FROM "UserWorkGroup" uwg, "WorkGroup" wg WHERE uwg.userid = $1 AND uwg.workgroup = wg.id AND wg.id = $2',
-			[userId, workgroupId]
-		);
+		const exists = await client.query('SELECT * FROM "UserWorkGroup" uwg WHERE uwg.userid = $1 AND uwg.workgroup = $2', [userId, workgroupId]);
 		if (exists.rowCount == 0) throw new Error("Non è possibile creare una sezione in un workgroup di cui non fai parte");
 		// Create section
 		const results = await client.query('INSERT INTO "Section" (title, workgroup) VALUES ($1, $2) RETURNING *', [title, workgroupId]);
@@ -25,10 +22,7 @@ exports.deleteSection = async (sectionId, workgroupId, userId) => {
 	const client = await pool.connect();
 	try {
 		// Check if user is a member of the workgroup
-		const exists = await client.query(
-			'SELECT wg.* FROM "UserWorkGroup" uwg, "WorkGroup" wg WHERE uwg.userid = $1 AND uwg.workgroup = wg.id AND wg.id = $2',
-			[userId, workgroupId]
-		);
+		const exists = await client.query('SELECT * FROM "UserWorkGroup" uwg WHERE uwg.userid = $1 AND uwg.workgroup = $2', [userId, workgroupId]);
 		if (exists.rowCount == 0) throw new Error("Non è possibile eliminare una sezione in un workgroup di cui non fai parte");
 		// Delete all the tasks of that section
 		const results = await client.query('DELETE FROM "Task" WHERE section = $1 RETURNING *', [sectionId]);
@@ -47,7 +41,7 @@ exports.changeSectionTitle = async (newTitle, sectionId, workgroupId, userId) =>
 	try {
 		// Check preconditions
 		const exists = await client.query(
-			'SELECT * FROM "UserWorkGroup" uwg, "WorkGroup" wg, "Section" s WHERE uwg.userid = $1 AND uwg.workgroup = wg.id AND wg.id = $2 AND s.workgroup = wg.id AND s.id = $3',
+			'SELECT * FROM "UserWorkGroup" uwg, "Section" s WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND s.workgroup = uwg.workgroup AND s.id = $3',
 			[userId, workgroupId, sectionId]
 		);
 		if (exists.rowCount == 0)
@@ -67,7 +61,7 @@ exports.changeSectionTitle = async (newTitle, sectionId, workgroupId, userId) =>
 exports.getAllSections = async (workgroupId, userId) => {
 	// Get all the sections of the user
 	const results = await pool.query(
-		'SELECT s.* FROM "UserWorkGroup" uwg, "WorkGroup" wg, "Section" s WHERE uwg.userid = $1 AND uwg.workgroup = wg.id AND wg.id = $2 AND s.workgroup = wg.id',
+		'SELECT s.* FROM "UserWorkGroup" uwg, "Section" s WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND s.workgroup = uwg.workgroup',
 		[userId, workgroupId]
 	);
 	const data = [];
@@ -83,7 +77,7 @@ exports.createTask = async (sectionId, workgroupId, userId, title, description) 
 	try {
 		// Check preconditions
 		const exists = await client.query(
-			'SELECT * FROM "UserWorkGroup" uwg, "WorkGroup" wg, "Section" s WHERE uwg.userid = $1 AND uwg.workgroup = wg.id AND wg.id = $2 AND s.workgroup = wg.id AND s.id = $3',
+			'SELECT * FROM "UserWorkGroup" uwg, "Section" s WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND s.workgroup = uwg.workgroup AND s.id = $3',
 			[userId, workgroupId, sectionId]
 		);
 		if (exists.rowCount == 0)
@@ -112,8 +106,8 @@ exports.deleteTask = async (taskId, sectionId, workgroupId, userId) => {
 		// Check preconditions
 		const exists = await client.query(
 			`SELECT *
-		FROM "UserWorkGroup" uwg, "WorkGroup" wg, "Section" s, "Task" t
-		WHERE uwg.userid = $1 AND uwg.workgroup = wg.id AND wg.id = $2 AND s.workgroup = wg.id AND s.id = $3 AND t.section = s.id AND t.id = $4`,
+		FROM "UserWorkGroup" uwg, "Section" s, "Task" t
+		WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND s.workgroup = uwg.workgroup AND s.id = $3 AND t.section = s.id AND t.id = $4`,
 			[userId, workgroupId, sectionId, taskId]
 		);
 		if (exists.rowCount == 0)
@@ -140,7 +134,7 @@ exports.getAllTasks = async (sectionId, workgroupId, userId) => {
 	try {
 		// Check preconditions
 		const exists = await client.query(
-			'SELECT * FROM "UserWorkGroup" uwg, "WorkGroup" wg, "Section" s WHERE uwg.userid = $1 AND uwg.workgroup = wg.id AND wg.id = $2 AND s.workgroup = wg.id AND s.id = $3',
+			'SELECT * FROM "UserWorkGroup" uwg, "Section" s WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND s.workgroup = uwg.workgroup AND s.id = $3',
 			[userId, workgroupId, sectionId]
 		);
 		if (exists.rowCount == 0)
@@ -149,7 +143,7 @@ exports.getAllTasks = async (sectionId, workgroupId, userId) => {
 			);
 		// Get all the tasks of the user
 		const results = await client.query(
-			'SELECT t.* FROM "UserWorkGroup" uwg, "WorkGroup" wg, "Section" s, "Task" t WHERE uwg.userid = $1 AND uwg.workgroup = wg.id AND wg.id = $2 AND s.workgroup = wg.id AND t.section = s.id AND s.id = $3 ORDER BY t.index',
+			'SELECT t.* FROM "UserWorkGroup" uwg, "Section" s, "Task" t WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND s.workgroup = uwg.workgroup AND t.section = s.id AND s.id = $3 ORDER BY t.index',
 			[userId, workgroupId, sectionId]
 		);
 		// Get all the members of the tasks
@@ -188,8 +182,8 @@ exports.editTask = async (
 		// Check preconditions
 		const exists = await client.query(
 			`SELECT *
-		FROM "UserWorkGroup" uwg, "WorkGroup" wg, "Section" s, "Task" t
-		WHERE uwg.userid = $1 AND uwg.workgroup = wg.id AND wg.id = $2 AND s.workgroup = wg.id AND s.id = $3 AND t.section = s.id AND t.id = $4`,
+		FROM "UserWorkGroup" uwg, Section" s, "Task" t
+		WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND s.workgroup = uwg.workgroup AND s.id = $3 AND t.section = s.id AND t.id = $4`,
 			[userId, workgroupId, sectionId, taskId]
 		);
 		if (exists.rowCount == 0)
@@ -280,10 +274,6 @@ exports.editTask = async (
 			// Add new members
 			for (const member of members) await client.query('INSERT INTO "UserTask" (userid, task) VALUES ($1, $2)', [member, taskId]);
 		}
-		// Edit attachments
-		if (attachments) {
-			// TODO: Edit attachments to implement
-		}
 		// Get the task if not modified
 		if (!task) {
 			const results = await client.query('SELECT * FROM "Task" WHERE id = $1', [taskId]);
@@ -307,8 +297,8 @@ exports.createLabel = async (workgroupId, userId, name, color) => {
 		// Check preconditions
 		const exists = await client.query(
 			`SELECT *
-		FROM "UserWorkGroup" uwg, "WorkGroup" wg
-		WHERE uwg.userid = $1 AND uwg.workgroup = wg.id AND wg.id = $2`,
+		FROM "UserWorkGroup"
+		WHERE userid = $1 AND workgroup = $2`,
 			[userId, workgroupId]
 		);
 		if (exists.rowCount == 0)
@@ -330,8 +320,8 @@ exports.deleteLabel = async (labelId, workgroupId, userId) => {
 		// Check preconditions
 		const exists = await client.query(
 			`SELECT *
-		FROM "UserWorkGroup" uwg, "WorkGroup" wg, "Label" l
-		WHERE uwg.userid = $1 AND uwg.workgroup = wg.id AND wg.id = $2 AND l.workgroup = wg.id AND l.id = $3`,
+		FROM "UserWorkGroup" uwg, "Label" l
+		WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND l.workgroup = uwg.workgroup AND l.id = $3`,
 			[userId, workgroupId, labelId]
 		);
 		if (exists.rowCount == 0)
@@ -349,10 +339,7 @@ exports.getAllLabels = async (workgroupId, userId) => {
 	const client = await pool.connect();
 	try {
 		// Check preconditions
-		const exists = await client.query(
-			'SELECT * FROM "UserWorkGroup" uwg, "WorkGroup" wg WHERE uwg.userid = $1 AND uwg.workgroup = wg.id AND wg.id = $2',
-			[userId, workgroupId]
-		);
+		const exists = await client.query('SELECT * FROM "UserWorkGroup" uwg WHERE uwg.userid = $1 AND uwg.workgroup = $2', [userId, workgroupId]);
 		if (exists.rowCount == 0)
 			throw new Error("Operazione fallita. Potresti aver richiesto di accedere ad una risorsa inesistene o di cui non hai l'accesso");
 		// Get all the labels of the workgroup
@@ -371,8 +358,8 @@ exports.editLabel = async (labelId, workgroupId, userId, name, color) => {
 		// Check preconditions
 		const exists = await client.query(
 			`SELECT *
-		FROM "UserWorkGroup" uwg, "WorkGroup" wg, "Label" l
-		WHERE uwg.userid = $1 AND uwg.workgroup = wg.id AND wg.id = $2 AND l.workgroup = wg.id AND l.id = $3`,
+		FROM "UserWorkGroup" uwg, "Label" l
+		WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND l.workgroup = uwg.workgroup AND l.id = $3`,
 			[userId, workgroupId, labelId]
 		);
 		if (exists.rowCount == 0)
@@ -395,8 +382,8 @@ exports.getAllMembers = async (taskId, sectionId, workgroupId, userId) => {
 		// Check preconditions
 		const exists = await client.query(
 			`SELECT *
-		FROM "UserWorkGroup" uwg, "WorkGroup" wg, "Section" s, "Task" t
-		WHERE uwg.userid = $1 AND uwg.workgroup = wg.id AND wg.id = $2 AND s.workgroup = wg.id AND s.id = $3 AND t.section = s.id AND t.id = $4`,
+		FROM "UserWorkGroup" uwg, "Section" s, "Task" t
+		WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND s.workgroup = uwg.workgroup AND s.id = $3 AND t.section = s.id AND t.id = $4`,
 			[userId, workgroupId, sectionId, taskId]
 		);
 		if (exists.rowCount == 0)
@@ -416,8 +403,8 @@ exports.getAllAttachments = async (taskId, sectionId, workgroupId, userId) => {
 		// Check preconditions
 		const exists = await client.query(
 			`SELECT *
-		FROM "UserWorkGroup" uwg, "WorkGroup" wg, "Section" s, "Task" t
-		WHERE uwg.userid = $1 AND uwg.workgroup = wg.id AND wg.id = $2 AND s.workgroup = wg.id AND s.id = $3 AND t.section = s.id AND t.id = $4`,
+		FROM "UserWorkGroup" uwg, "Section" s, "Task" t
+		WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND s.workgroup = uwg.workgroup AND s.id = $3 AND t.section = s.id AND t.id = $4`,
 			[userId, workgroupId, sectionId, taskId]
 		);
 		if (exists.rowCount == 0)
