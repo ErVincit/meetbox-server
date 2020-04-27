@@ -18,24 +18,34 @@ exports.getWorkgroup = async (userId, workgroupId) => {
 
 exports.createWorkgroup = async (userId, name, image) => {
 	const client = await pool.connect();
-	const result = await client.query('INSERT INTO "WorkGroup"(name, image, owner) VALUES ($1, $2, $3) RETURNING *', [name, image, userId]);
-	if (result.rowCount == 1) {
-		const workgroupId = result.rows[0].id;
-		await client.query('INSERT INTO "UserWorkGroup" VALUES ($1, $2)', [userId, workgroupId]);
-		return result.rows[0];
+	try {
+		const result = await client.query('INSERT INTO "WorkGroup"(name, image, owner) VALUES ($1, $2, $3) RETURNING *', [name, image, userId]);
+		if (result.rowCount == 1) {
+			const workgroupId = result.rows[0].id;
+			await client.query('INSERT INTO "UserWorkGroup" VALUES ($1, $2)', [userId, workgroupId]);
+			return result.rows[0];
+		}
+		client.release();
+		throw new Error("Creazione del workgroup fallita");
+	} catch (err) {
+		client.release();
+		throw new Error(err.message);
 	}
-	client.release();
-	throw new Error("Creazione del workgroup fallita");
 };
 
 exports.deleteWorkgroup = async (userId, workgroupId) => {
 	const client = await pool.connect();
-	const workgroup = await this.getWorkgroup(userId, workgroupId);
-	if (workgroup.owner !== userId) throw new Error("Solo il proprietario del workgroup può eliminarlo");
-	await client.query('DELETE FROM "UserWorkGroup" WHERE userid = $1 AND workgroup = $2', [userId, workgroupId]);
-	const results = await client.query('DELETE FROM "WorkGroup" WHERE id = $1 RETURNING *', [workgroupId]);
-	client.release();
-	return results.rows[0];
+	try {
+		const workgroup = await this.getWorkgroup(userId, workgroupId);
+		if (workgroup.owner !== userId) throw new Error("Solo il proprietario del workgroup può eliminarlo");
+		await client.query('DELETE FROM "UserWorkGroup" WHERE userid = $1 AND workgroup = $2', [userId, workgroupId]);
+		const results = await client.query('DELETE FROM "WorkGroup" WHERE id = $1 RETURNING *', [workgroupId]);
+		client.release();
+		return results.rows[0];
+	} catch (err) {
+		client.release();
+		throw new Error(err.message);
+	}
 };
 
 exports.addMember = async (userId, workgroupId, memberId) => {
@@ -58,4 +68,12 @@ exports.getAllMembers = async (userId, workgroupId) => {
 	const userFound = result.rows.find((user) => user.id === userId);
 	if (!userFound) throw new Error("Non fai parte del workgroup con id " + workgroupId);
 	return result.rows;
+};
+
+// Check if members are in the workgroup
+exports.checkWorkgroupMembers = async (membersIdToCheck, workgroupId, userId) => {
+	const workgroupMembers = await workgroupService.getAllMembers(userId, workgroupId);
+	const membersId = workgroupMembers.map((member) => member.id);
+	for (const member of membersIdToCheck) if (!membersId.includes(member)) return false;
+	return true;
 };
