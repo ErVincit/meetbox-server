@@ -267,7 +267,7 @@ exports.editTask = async (
 		}
 		// Edit members
 		if (members) {
-			if (!(await workgroupService.checkIfMembersInWorkgroup()))
+			if (!(await workgroupService.checkWorkgroupMembers(members, workgroupId, userId)))
 				throw new Error("Ci sono dei membri forniti che non fanno parte del workgroup");
 			// Delete old members
 			await client.query('DELETE FROM "UserTask" WHERE task = $1', [taskId]);

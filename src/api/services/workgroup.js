@@ -72,7 +72,7 @@ exports.getAllMembers = async (userId, workgroupId) => {
 
 // Check if members are in the workgroup
 exports.checkWorkgroupMembers = async (membersIdToCheck, workgroupId, userId) => {
-	const workgroupMembers = await workgroupService.getAllMembers(userId, workgroupId);
+	const workgroupMembers = await this.getAllMembers(userId, workgroupId);
 	const membersId = workgroupMembers.map((member) => member.id);
 	for (const member of membersIdToCheck) if (!membersId.includes(member)) return false;
 	return true;
