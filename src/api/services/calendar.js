@@ -20,7 +20,7 @@ exports.createEvent = async (
     ]);
   if (timestampEnd)
     await client.query(
-      'UPDATE "Event" SET "timestampEnd" = $1 WHERE id = $2 ',
+      'UPDATE "Event" SET "timestampEnd" = $1 WHERE id = $2;',
       [timestampEnd, idEvent]
     );
   client.release();
