@@ -3,8 +3,10 @@ require("dotenv").config();
 
 const express = require("express");
 const cookieSession = require("cookie-session");
+const cors = require("cors");
 const main = express();
 
+main.use(cors());
 main.use(express.urlencoded({ extended: true }));
 main.use(express.json());
 main.use(
