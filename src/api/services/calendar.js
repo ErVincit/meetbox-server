@@ -80,4 +80,31 @@ exports.updateEvent = async (
         [userId, idEvent]
       );
   }
+  client.release();
+};
+
+exports.getEvents = async (idWorkgroup, from, to) => {
+  const client = await pool.connect();
+  let result;
+  if (from && !to)
+    result = await client.query(
+      'SELECT * FROM "Event" WHERE workgroup = $1 AND "timestampBegin" >= $2',
+      [idWorkgroup, new Date(from)]
+    );
+  else if (to && !from)
+    result = await client.query(
+      'SELECT * FROM "Event" WHERE workgroup = $1 AND "timestampBegin" <= $2',
+      [idWorkgroup, new Date(to)]
+    );
+  else if (to && from)
+    result = await client.query(
+      'SELECT * FROM "Event" WHERE workgroup = $1 AND "timestampBegin" >= $2 AND "timestampBegin" <= $3',
+      [idWorkgroup, new Date(from), new Date(to)]
+    );
+  else
+    result = await client.query('SELECT * FROM "Event" WHERE workgroup = $1', [
+      idWorkgroup,
+    ]);
+  client.release();
+  return result.rows;
 };

@@ -157,4 +157,12 @@ app.put("/event/:idEvent", async (req, res) => {
   res.sendStatus(200);
 });
 
+app.get("/events", async (req, res) => {
+  const idWorkgroup = req.params.idWorkgroup;
+  const { from, to } = req.query;
+  console.log(req.query);
+  const events = await calendarService.getEvents(idWorkgroup, from, to);
+  return res.json({ data: events });
+});
+
 module.exports = app;
