@@ -91,7 +91,7 @@ router.get("/section/:idSection/task", async (req, res) => {
 router.put("/section/:idSection/task/:idTask/edit", async (req, res) => {
 	try {
 		const { idWorkgroup, idSection, idTask } = req.params;
-		const { title, description, label, deadline, section, index, completed, members, attachments } = req.body;
+		const { title, description, label, deadline, section, index, completed, members } = req.body;
 		const tasks = await activityService.editTask(
 			idTask,
 			idSection,
@@ -104,8 +104,7 @@ router.put("/section/:idSection/task/:idTask/edit", async (req, res) => {
 			section,
 			index,
 			completed,
-			members,
-			attachments
+			members
 		);
 		res.json({ data: tasks });
 	} catch (err) {
@@ -148,7 +147,7 @@ router.get("/label", async (req, res) => {
 	}
 });
 
-// Edit task
+// Edit label
 router.put("/label/:idLabel/edit", async (req, res) => {
 	try {
 		const { idWorkgroup, idLabel } = req.params;

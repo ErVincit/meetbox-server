@@ -5,16 +5,17 @@ const workgroupService = require("./workgroup");
 exports.createSection = async (title, workgroupId, userId) => {
 	const client = await pool.connect();
 	try {
-		// Check if user is a member of the workgroup
+		// Check if the user is a member of the workgroup
 		const exists = await client.query('SELECT * FROM "UserWorkGroup" uwg WHERE uwg.userid = $1 AND uwg.workgroup = $2', [userId, workgroupId]);
-		if (exists.rowCount == 0) throw new Error("Non è possibile creare una sezione in un workgroup di cui non fai parte");
+		if (exists.rowCount == 0)
+			throw new Error("Operazione fallita. Potresti aver richiesto di accedere ad una risorsa inesistene o di cui non hai l'accesso");
 		// Create section
 		const results = await client.query('INSERT INTO "Section" (title, workgroup) VALUES ($1, $2) RETURNING *', [title, workgroupId]);
 		client.release();
 		return results.rows[0];
 	} catch (err) {
 		client.release();
-		throw new Error(err.message);
+		throw err;
 	}
 };
 
@@ -23,8 +24,9 @@ exports.deleteSection = async (sectionId, workgroupId, userId) => {
 	try {
 		// Check if user is a member of the workgroup
 		const exists = await client.query('SELECT * FROM "UserWorkGroup" uwg WHERE uwg.userid = $1 AND uwg.workgroup = $2', [userId, workgroupId]);
-		if (exists.rowCount == 0) throw new Error("Non è possibile eliminare una sezione in un workgroup di cui non fai parte");
-		// Delete all the tasks of that section
+		if (exists.rowCount == 0)
+			throw new Error("Operazione fallita. Potresti aver richiesto di accedere ad una risorsa inesistene o di cui non hai l'accesso");
+		// Delete all the tasks of the section
 		const results = await client.query('DELETE FROM "Task" WHERE section = $1 RETURNING *', [sectionId]);
 		// Delete the section
 		await client.query('DELETE FROM "Section" WHERE id = $1', [sectionId]);
@@ -32,7 +34,7 @@ exports.deleteSection = async (sectionId, workgroupId, userId) => {
 		return results.rows;
 	} catch (err) {
 		client.release();
-		throw new Error(err.message);
+		throw err;
 	}
 };
 
@@ -45,16 +47,14 @@ exports.changeSectionTitle = async (newTitle, sectionId, workgroupId, userId) =>
 			[userId, workgroupId, sectionId]
 		);
 		if (exists.rowCount == 0)
-			throw new Error(
-				"Operazione fallita. Potresti aver richiesto di modificare un gruppo di lavoro o sezione inesistente oppure di risorse di cui non hai l'accesso"
-			);
+			throw new Error("Operazione fallita. Potresti aver richiesto di accedere ad una risorsa inesistene o di cui non hai l'accesso");
 		// Change title
 		const result = await client.query('UPDATE "Section" SET title = $1 WHERE id = $2 RETURNING *', [newTitle, sectionId]);
 		client.release();
 		return result.rows[0];
 	} catch (err) {
 		client.release();
-		throw new Error(err.message);
+		throw err;
 	}
 };
 
@@ -81,12 +81,11 @@ exports.createTask = async (sectionId, workgroupId, userId, title, description) 
 			[userId, workgroupId, sectionId]
 		);
 		if (exists.rowCount == 0)
-			throw new Error(
-				"Operazione fallita. Potresti aver richiesto di inserire un gruppo di lavoro o sezione inesistente oppure di risorse di cui non hai l'accesso"
-			);
+			throw new Error("Operazione fallita. Potresti aver richiesto di accedere ad una risorsa inesistene o di cui non hai l'accesso");
 		// Get the last index
 		const result = await client.query('SELECT MAX(index) as max FROM "Task" WHERE section = $1', [sectionId]);
-		const index = result.rowCount == 0 ? 0 : result.rows[0].max + 1;
+		const max = result.rows[0].max;
+		const index = max !== null ? max + 1 : 0;
 		// Create the task
 		const results = await client.query(
 			'INSERT INTO "Task" (title, description, section, index, owner, completed) VALUES ($1, $2, $3, $4, $5, false) RETURNING *',
@@ -96,7 +95,7 @@ exports.createTask = async (sectionId, workgroupId, userId, title, description) 
 		return results.rows[0];
 	} catch (err) {
 		client.release();
-		throw new Error(err.message);
+		throw err;
 	}
 };
 
@@ -111,9 +110,7 @@ exports.deleteTask = async (taskId, sectionId, workgroupId, userId) => {
 			[userId, workgroupId, sectionId, taskId]
 		);
 		if (exists.rowCount == 0)
-			throw new Error(
-				"Operazione fallita. Potresti aver richiesto di inserire un gruppo di lavoro, sezione e/o task inesistente oppure di risorse di cui non hai l'accesso"
-			);
+			throw new Error("Operazione fallita. Potresti aver richiesto di accedere ad una risorsa inesistene o di cui non hai l'accesso");
 		// Delete all the members of the task
 		await client.query('DELETE FROM "UserTask" WHERE task = $1', [taskId]);
 		// Delete the task
@@ -125,7 +122,7 @@ exports.deleteTask = async (taskId, sectionId, workgroupId, userId) => {
 		return results.rows[0];
 	} catch (err) {
 		client.release();
-		throw new Error(err.message);
+		throw err;
 	}
 };
 
@@ -138,14 +135,9 @@ exports.getAllTasks = async (sectionId, workgroupId, userId) => {
 			[userId, workgroupId, sectionId]
 		);
 		if (exists.rowCount == 0)
-			throw new Error(
-				"Operazione fallita. Potresti aver richiesto di mostrare un gruppo di lavoro o sezione inesistente oppure di risorse di cui non hai l'accesso"
-			);
+			throw new Error("Operazione fallita. Potresti aver richiesto di accedere ad una risorsa inesistene o di cui non hai l'accesso");
 		// Get all the tasks of the user
-		const results = await client.query(
-			'SELECT t.* FROM "UserWorkGroup" uwg, "Section" s, "Task" t WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND s.workgroup = uwg.workgroup AND t.section = s.id AND s.id = $3 ORDER BY t.index',
-			[userId, workgroupId, sectionId]
-		);
+		const results = await client.query('SELECT * FROM "Task" WHERE section = $1 ORDER BY index', [sectionId]);
 		// Get all the members of the tasks
 		const data = [];
 		for (const task of results.rows) {
@@ -158,32 +150,17 @@ exports.getAllTasks = async (sectionId, workgroupId, userId) => {
 		return data;
 	} catch (err) {
 		client.release();
-		throw new Error(err.message);
+		throw err;
 	}
 };
 
-exports.editTask = async (
-	taskId,
-	sectionId,
-	workgroupId,
-	userId,
-	title,
-	description,
-	label,
-	deadline,
-	section,
-	index,
-	completed,
-	members,
-	attachments
-) => {
+exports.editTask = async (taskId, sectionId, workgroupId, userId, title, description, label, deadline, section, index, completed, members) => {
 	const client = await pool.connect();
 	try {
 		// Check preconditions
 		const exists = await client.query(
-			`SELECT *
-		FROM "UserWorkGroup" uwg, Section" s, "Task" t
-		WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND s.workgroup = uwg.workgroup AND s.id = $3 AND t.section = s.id AND t.id = $4`,
+			`SELECT * FROM "UserWorkGroup" uwg, "Section" s, "Task" t
+			WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND s.workgroup = uwg.workgroup AND s.id = $3 AND t.section = s.id AND t.id = $4`,
 			[userId, workgroupId, sectionId, taskId]
 		);
 		if (exists.rowCount == 0)
@@ -201,11 +178,11 @@ exports.editTask = async (
 		}
 		// Edit label
 		if (label !== undefined) {
-			// Check that the label is linked with the workgroup
+			// Check if the label is linked with the workgroup
 			if (label !== null) {
 				const result = await client.query('SELECT * FROM "Label" WHERE workgroup = $1 AND id = $2', [workgroupId, label]);
 				if (result.rowCount == 0)
-					throw new Error("Operazione fallita. L'etichetta che vorresti aggiungere non appartiene al gruppo di lavoro oppure non esiste");
+					throw new Error("Operazione fallita. Potresti aver richiesto di accedere ad una risorsa inesistene o di cui non hai l'accesso");
 			}
 			const results = await client.query('UPDATE "Task" SET label = $2 WHERE id = $1 RETURNING *', [taskId, label]);
 			task = results.rows[0];
@@ -232,13 +209,13 @@ exports.editTask = async (
 			sectionId = section;
 		}
 		// Edit index
-		if (index) {
-			// Check if index less than one
-			if (index < 1) throw new Error("L'indice deve essere maggiore di 0");
+		if (index !== undefined && index !== null) {
+			// Check if index less than zero
+			if (index < 0) throw new Error("L'indice del task deve essere positivo");
 
 			// Check if index greater than the max index value for the section
-			const maxIndex = (await client.query('SELECT MAX(index) FROM "Task" WHERE section = $1', [sectionId])).rows[0];
-			if (index > maxIndex) throw new Error("L'indice deve essere minore del massimo indice");
+			const maxIndex = (await client.query('SELECT MAX(index) as max FROM "Task" WHERE section = $1', [sectionId])).rows[0].max;
+			if (index > maxIndex) throw new Error("L'indice del task deve essere minore del massimo indice");
 
 			// Shift the indexes between the target index and the source index
 			const sourceIndex = exists.rows[0].index;
@@ -261,7 +238,7 @@ exports.editTask = async (
 			task = results.rows[0];
 		}
 		// Edit completed
-		if (completed != undefined && completed != null) {
+		if (completed !== undefined && completed !== null) {
 			const results = await client.query('UPDATE "Task" SET completed = $2 WHERE id = $1 RETURNING *', [taskId, completed]);
 			task = results.rows[0];
 		}
@@ -287,7 +264,7 @@ exports.editTask = async (
 		return task;
 	} catch (err) {
 		client.release();
-		throw new Error(err.message);
+		throw err;
 	}
 };
 
@@ -310,7 +287,7 @@ exports.createLabel = async (workgroupId, userId, name, color) => {
 		return results.rows[0];
 	} catch (err) {
 		client.release();
-		throw new Error(err.message);
+		throw err;
 	}
 };
 
@@ -331,7 +308,7 @@ exports.deleteLabel = async (labelId, workgroupId, userId) => {
 		return results.rows[0];
 	} catch (err) {
 		client.release();
-		throw new Error(err.message);
+		throw err;
 	}
 };
 
@@ -348,7 +325,7 @@ exports.getAllLabels = async (workgroupId, userId) => {
 		return results.rows;
 	} catch (err) {
 		client.release();
-		throw new Error(err.message);
+		throw err;
 	}
 };
 
@@ -357,9 +334,8 @@ exports.editLabel = async (labelId, workgroupId, userId, name, color) => {
 	try {
 		// Check preconditions
 		const exists = await client.query(
-			`SELECT *
-		FROM "UserWorkGroup" uwg, "Label" l
-		WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND l.workgroup = uwg.workgroup AND l.id = $3`,
+			`SELECT * FROM "UserWorkGroup" uwg, "Label" l
+			WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND l.workgroup = uwg.workgroup AND l.id = $3`,
 			[userId, workgroupId, labelId]
 		);
 		if (exists.rowCount == 0)
@@ -367,12 +343,12 @@ exports.editLabel = async (labelId, workgroupId, userId, name, color) => {
 		let results;
 		if (name) results = await client.query('UPDATE "Label" SET name = $2 WHERE id = $1 RETURNING *', [labelId, name]);
 		if (color) results = await client.query('UPDATE "Label" SET color = $2 WHERE id = $1 RETURNING *', [labelId, color]);
+		if (!results) results = await client.query('SELECT * FROM "Label" WHERE id = $1', [labelId]);
 		client.release();
-		if (results) return results.rows[0];
-		return {};
+		return results.rows[0];
 	} catch (err) {
 		client.release();
-		throw new Error(err.message);
+		throw err;
 	}
 };
 
@@ -393,7 +369,7 @@ exports.getAllMembers = async (taskId, sectionId, workgroupId, userId) => {
 		return results.rows;
 	} catch (err) {
 		client.release();
-		throw new Error(err.message);
+		throw err;
 	}
 };
 
@@ -409,11 +385,11 @@ exports.getAllAttachments = async (taskId, sectionId, workgroupId, userId) => {
 		);
 		if (exists.rowCount == 0)
 			throw new Error("Operazione fallita. Potresti aver richiesto di accedere ad una risorsa inesistene o di cui non hai l'accesso");
-		const results = await client.query('SELECT * FROM "Document" ut WHERE task = $1', [taskId]);
+		const results = await client.query('SELECT * FROM "Document" WHERE task = $1', [taskId]);
 		client.release();
 		return results.rows;
 	} catch (err) {
 		client.release();
-		throw new Error(err.message);
+		throw err;
 	}
 };
