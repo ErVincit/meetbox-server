@@ -33,7 +33,6 @@ router.delete('/:idDocument', async (req, res, next) => {
         await documentService.delete(req.currentUser, idDocument, idWorkgroup);
         res.sendStatus(200);
     } catch (err) {
-        console.log("ERR2", err.message)
         res.send({error: err.name, message: err.message});
     }
 });

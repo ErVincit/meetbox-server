@@ -1,6 +1,7 @@
 const pool = require("../../database");
 
 const workgroupServices = require('./workgroup');
+const driveService = require('./drive');
 
 exports.get = async (currentUser, idDocument, idWorkgroup) => {
     const sql = `SELECT d.id, d.name, d.creationdate, d.isfolder, d.isnote, d.path, d.size, d.owner, d.folder, d.workgroup, d.task
@@ -65,6 +66,25 @@ exports.edit = async (currentUser, idDocument, idWorkgroup, members, name, folde
 };
 
 exports.delete = async (currentUser, idDocument, idWorkgroup) => {
+    const deleteElement = async (document, tree) => {
+        if (document.isfolder) {
+            const figlioletti = tree[document.id];
+            console.log("Figlioletti", figlioletti);
+            if (figlioletti)
+                for (var i = 0; i < figlioletti.length; i++) {
+                    deleteElement(figlioletti[i], tree);
+                }
+            if (await isFolderEmpty(document.id, idWorkgroup)) {
+                console.log("Cancello cartella:", document.id);
+                await pool.query('DELETE FROM "UserDocument" WHERE document = $1', [document.id]);
+                await pool.query('DELETE FROM "Document" WHERE id = $1', [document.id]);
+            }
+        } else {
+            console.log("Cancello file:", document.id);
+            await pool.query('DELETE FROM "UserDocument" WHERE document = $1', [document.id]);
+            await pool.query('DELETE FROM "Document" WHERE id = $1', [document.id]);
+        }
+    };
     //Se documento esiste
     //Se documento fa parte dello stesso stesso workgroup di cui fai parte
     //Se puoi vedere il documento
@@ -74,20 +94,39 @@ exports.delete = async (currentUser, idDocument, idWorkgroup) => {
             throw new Error("Il documento non esiste");
         if (!this.enabledToWatch(currentUser, idDocument, idWorkgroup)) 
             throw new Error("Non è possibile eliminare questo documento poichè non ti è accessibile");
-        //Allora elimina il documento
-        await pool.query('DELETE FROM "UserDocument" WHERE document = $1', [idDocument]);
-        await pool.query('DELETE FROM "Document" WHERE id = $1', [idDocument]);
+        if (exists.isfolder) { //Cancellare prima tutti i file sottostanti ricorsivamente
+            const files = await driveService.tree(currentUser, idWorkgroup);
+            deleteElement(exists, files);
+        } else deleteElement(exists);
     } catch (err) {
         throw err;
     }
 };
+
+isFolderEmpty = async (idFolder, idWorkgroup) => {
+    var resultO = {};
+    try {
+        resultO = await pool.query(
+            `SELECT d.id, d.name, d.creationdate, d.isfolder, d.isnote, d.path, d.size, d.owner, d.folder, d.workgroup, d.task
+            FROM "Document" d
+            WHERE d.workgroup = $1 AND d.folder = $2;`,
+            [idWorkgroup, idFolder]
+        );
+    } catch (err) {
+        throw err;
+    }
+    console.log("Numero figli rimanenti", resultO.rowCount);
+    if (resultO.rowCount > 0) 
+        return false;
+    else return true;
+}
 
 exports.editMembers = async (currentUser, idDocument, idWorkgroup, members) => {
     //Se documento esiste
     //Se documento fa parte dello stesso stesso workgroup di cui fai parte
     //Se puoi vedere il documento
     if (!await this.enabledToWatch(currentUser, idDocument, idWorkgroup)) 
-        throw new Error("Non è possibile editare questo documento");
+        throw new Error("Accesso al documento negato");
     if (!(await workgroupServices.checkWorkgroupMembers(members, idWorkgroup, currentUser)))
         throw new Error("Ci sono dei membri forniti che non fanno parte del workgroup");
     // Delete old members
@@ -102,7 +141,7 @@ exports.editName = async (currentUser, idDocument, idWorkgroup, name) => {
     //Se documento fa parte dello stesso stesso workgroup di cui fai parte
     //Se puoi vedere il documento
     if (!await this.enabledToWatch(currentUser, idDocument, idWorkgroup)) 
-        throw new Error("Non è possibile editare questo documento");
+        throw new Error("Accesso al documento negato");
     //Verificare che non esistono altri file con lo stesso nome
     const doc = await this.get(currentUser, idDocument, idWorkgroup);
     if (await this.isNameUsed(name, doc.isfolder, doc.folder))
@@ -116,7 +155,7 @@ exports.editFolder = async (currentUser, idDocument, idWorkgroup, folder) => {
     //Se documento fa parte dello stesso stesso workgroup di cui fai parte
     //Se puoi vedere il documento
     if (!await this.enabledToWatch(currentUser, idDocument, idWorkgroup)) 
-        throw new Error("Non puoi accedere a questo documento");
+        throw new Error("Accesso al documento negato");
     //Se il documento è una cartella, verificare che la cartella padre non sia proprio questa cartella
     if (idDocument == folder)
         throw new Error("Non puoi spostare la cartella in se stessa");
