@@ -189,13 +189,14 @@ exports.editTask = async (taskId, sectionId, workgroupId, userId, title, descrip
 		}
 		// Edit deadline
 		if (deadline !== undefined) {
+			let date;
 			// Check if the deadline is in the future
 			if (deadline !== null) {
-				const date = new Date(deadline);
+				date = new Date(deadline);
 				const now = new Date();
 				if (date <= now) throw new Error("La scadenza fornita è una data passata");
 			}
-			const results = await client.query('UPDATE "Task" SET deadline = $2 WHERE id = $1 RETURNING *', [taskId, deadline]);
+			const results = await client.query('UPDATE "Task" SET deadline = $2 WHERE id = $1 RETURNING *', [taskId, date]);
 			task = results.rows[0];
 		}
 		// Edit section
