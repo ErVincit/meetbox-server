@@ -5,28 +5,27 @@ const app = express.Router({ mergeParams: true });
 const calendarService = require("../services/calendar");
 const workgroupService = require("../services/workgroup");
 const pool = require("../../database");
-
 app.post("/event", async (req, res) => {
   const workgroup = parseInt(req.params.idWorkgroup);
   const { title, description, timestampBegin, timestampEnd } = req.body;
   if (title.length < 2)
     return res.status(500).send({
       error: "ParamsError",
-      message: "The name parameter's length is less than 2",
+      message: "La lunghezza del nome inserito è inferiore a 2 caratteri",
     });
   const datenow = new Date();
   const dateBegin = new Date(timestampBegin);
   if (dateBegin < datenow)
     return res.status(500).send({
       error: "ParamsError",
-      message: "The start date precedes the actual date",
+      message: "La data d'inizio inserita è precedente alla data attuale",
     });
   if (timestampEnd) {
     const dateEnd = new Date(timestampEnd);
     if (dateEnd < dateBegin)
       return res.status(500).send({
         error: "ParamsError",
-        message: "The end date precedes the start date",
+        message: "La data di fine inserita è precedente alla data d'inizio",
       });
   }
   const id = await calendarService.createEvent(
@@ -56,7 +55,7 @@ app.delete("/event/:idEvent", async (req, res) => {
   );
   if (results.rowCount == 0)
     return res.status(500).send({
-      message: "You are not allowed to modify this event",
+      message: "Non hai i permessi per modificare questo evento",
     });
   const event = await calendarService.deleteEvent(userId, idEvent);
   return res.json({ data: event });
@@ -80,14 +79,15 @@ app.put("/event/:idEvent", async (req, res) => {
   );
   if (results.rowCount == 0)
     return res.status(500).send({
-      message: "You are not allowed to modify this event",
+      message: "Non hai i permessi per modificare questo evento",
     });
   // check title length
   if (title) {
     if (title.length < 2)
       return res.status(500).send({
         error: "ParamsError",
-        message: "The new name parameter's length is less than 2",
+        message:
+          "il nuovo nome inserito è di lunghezza inferiore a 2 caratteri",
       });
   }
   // if i have new timestampBegin and new timestampEnd: check if new timestamp Begin < new timestampEnd
@@ -97,7 +97,7 @@ app.put("/event/:idEvent", async (req, res) => {
     if (dateEnd < dateBegin) {
       return res.status(500).send({
         error: "ParamsError",
-        message: "The end date precedes the start date",
+        message: "La data di fine inserita è precedente alla data d'inizio",
       });
     }
   }
@@ -115,14 +115,16 @@ app.put("/event/:idEvent", async (req, res) => {
     if (dateBegin < datenow)
       return res.status(500).send({
         error: "ParamsError",
-        message: "The new start date precedes the actual date",
+        message:
+          "La nuova data d'inizio inserita è precedente alla data attuale",
       });
     if (prevTimestampEnd) {
       const prevDateEnd = new Date(prevTimestampEnd);
       if (dateBegin > prevDateEnd)
         return res.status(500).send({
           error: "ParamsError",
-          message: "The new start date succeed the end date",
+          message:
+            "La nuova data d'inizio inserita è precedente alla data di fine dell'evento",
         });
     }
   }
@@ -133,14 +135,15 @@ app.put("/event/:idEvent", async (req, res) => {
     if (dateEnd < prevDateBegin)
       return res.status(500).send({
         error: "ParamsError",
-        message: "The new end date precedes the begin date",
+        message:
+          "La nuova data di fine è precedente alla data d'inizio dell'evento",
       });
   }
   //check if member/members is/are in relation with that idWorkGroup in UserWorkGroup (so if they are allowed)
   if (members) {
     if (!(await workgroupService.checkIfMembersInWorkgroup()))
       throw new Error(
-        "There are members that cannot be added in this event because they don't belong to this workgroup"
+        "Alcuni membri non possono essere aggiunti perchè non appartenenti a questo workgroup"
       );
   }
   await calendarService.updateEvent(
