@@ -14,14 +14,16 @@ router.post('/:idDocument/download', async (req, res, next) => res.sendStatus(20
 router.put('/:idDocument/edit', async (req, res, next) => {
     const { idDocument, idWorkgroup } = req.params;
     const { members, name, folder } = req.body;
-    if (!members && !name && !folder ) return res.send({message: await documentService.get(currentUser, idDocument)}).status(200);
+    const currentUser = req.currentUser;
+    if (!members && !name && !folder ) 
+        return res.send({message: await documentService.get(currentUser, idDocument, idWorkgroup)}).status(200);
     try {
-        await documentService.edit(req.currentUser, idDocument, idWorkgroup, members, name, folder);
-        return res.send({messsage: await documentService.get(currentUser, idDocument)});
+        await documentService.edit(currentUser, idDocument, idWorkgroup, members, name, folder);
+        return res.send({messsage: await documentService.get(currentUser, idDocument, idWorkgroup)});
     } catch(err) {
-        res.sendStatus(500);
+        console.log(err);
+        return res.send({error: err.name, message: err.message}).status(500);
     }
-    res.sendStatus(200)
 });
 
 router.delete('/:idDocument', async (req, res, next) => {

@@ -19,7 +19,7 @@ exports.tree = async (currentUser, workgroup) => {
         throw new Error(err.name);
     }
     
-    const list = [];
+    var list = [];
     if (resultO.rowCount > 0) {
         if (resultM.rowCount > 0) {
             const totalId = [];
@@ -53,16 +53,18 @@ exports.create = async (currentUser, name, creationDate, isFolder, isNote, path,
     try {
         const fatherFolder = await this.getDocument(folder);
         if (Object.keys(fatherFolder).length > 0 && !fatherFolder.isfolder) throw new Error("La cartella padre non è una cartella");
-        if (await this.isNameUsed(name, isFolder, folder)) throw new Error("Il nome del file viola in vincolo di unique");
+        if (await documentService.isNameUsed(name, isFolder, folder)) throw new Error("Il nome del file viola in vincolo di unique");
         const sqlFolder = `INSERT INTO "Document"(name, creationdate, isfolder, isnote, size, folder, workgroup, owner) 
         VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`;
         try {
             const res = await pool.query(sqlFolder, [name, creationDate, isFolder, isNote, size, folder, workgroup, currentUser]);
             const idDocument = res.rows[0].id;
             if (!isFolder) {
-                const sqlIsFolder = `UPDATE "Document" SET path = $1, size = $2 WHERE id = $3`;
                 try {
-                    await pool.query(sqlIsFolder, [path, size, idDocument]);
+                    await pool.query(
+                        `UPDATE "Document" SET path = $1, size = $2 WHERE id = $3`,
+                        [path, size, idDocument]
+                    );
                 } catch (err) {
                     // Cancellare query precedente?
                     console.log(err)
@@ -98,15 +100,4 @@ exports.getDocument = async (idDocument) => {
         throw new Error("Il documento proposto non esiste");
     }
     return {};
-}
-
-exports.isNameUsed = async (name, isFolder, idFolder) => {
-    try {
-        const res = await pool.query(`SELECT * FROM "Document" d WHERE d.name = $1 AND d.isfolder = $2 AND d.folder = $3;`, [name, isFolder, idFolder]);
-        if (res.rowCount > 0) return true;
-        return false;
-    } catch (err) {
-        console.log(err)
-        throw new Error("Errore esecuzione query di controllo");
-    }
 }

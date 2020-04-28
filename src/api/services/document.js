@@ -29,30 +29,39 @@ exports.get = async (currentUser, idDocument, idWorkgroup) => {
             });
         } else list = resOwner.rows;
     } else list = res.rows;
-    if (list.length > 0) return list;
+    if (list.length > 0) return list[0];
     return {};
 }
 
-exports.setAllMembers = async (currentUser, documentid, members, workgroup) => {
-    if (members === undefined) { // Oppure errore?
+exports.setAllMembers = async (currentUser, documentid, members, idWorkgroup) => {
+    if (members === undefined) {
         members = [];
-        const res = await workgroupServices.getAllMembers(currentUser, workgroup);
+        const res = await workgroupServices.getAllMembers(currentUser, idWorkgroup);
         for (var i = 0; i < res.length; i++) 
             members.push(res[i].id);
-    } else if (members === null) throw new Error("Non è possibile settare a null il parametro members");
+    } else if (members === null) throw new Error("Non è possibile impostare a null il parametro members");
     else if (members === []) members = [currentUser];
 
-    // Controllare se utenti appartengono al workgroup
-
-    for (var j = 0; j < members.length; j++) 
-        await pool.query('INSERT INTO "UserDocument" VALUES($1, $2)', [members[j], documentid]);
+    try {
+        if (!await workgroupServices.checkWorkgroupMembers(members, idWorkgroup, currentUser)) 
+            throw new Error("Uno o piu membri non appartengono a questo workgroup");
+    
+        for (var j = 0; j < members.length; j++) 
+            await pool.query('INSERT INTO "UserDocument" VALUES($1, $2)', [members[j], documentid]);
+    } catch (err) {
+        throw err;
+    }
 }
 
 exports.edit = async (currentUser, idDocument, idWorkgroup, members, name, folder) => {
-    //Se documento esiste e fa parte di quel workgroup
-    if (members) await this.editMembers(currentUser, idDocument, idWorkgroup, members);
-    if (name) await this.editName(currentUser, idDocument, idWorkgroup, name);
-    if (folder) await this.editFolder(currentUser, idDocument, idWorkgroup, folder);
+    //Se documento esiste e fa parte di quel workgroup -> controlli delegati alle singole funzioni
+    try {
+        if (members) await this.editMembers(currentUser, idDocument, idWorkgroup, members);
+        if (name) await this.editName(currentUser, idDocument, idWorkgroup, name);
+        if (folder) await this.editFolder(currentUser, idDocument, idWorkgroup, folder);
+    } catch (err) {
+        throw err;
+    }
 };
 
 exports.delete = async (currentUser, idDocument, idWorkgroup) => {
@@ -64,13 +73,12 @@ exports.delete = async (currentUser, idDocument, idWorkgroup) => {
         if (Object.keys(exists).length === 0) 
             throw new Error("Il documento non esiste");
         if (!this.enabledToWatch(currentUser, idDocument, idWorkgroup)) 
-            throw new Error("Non è possibile editare questo documento");
+            throw new Error("Non è possibile eliminare questo documento poichè non ti è accessibile");
         //Allora elimina il documento
         await pool.query('DELETE FROM "UserDocument" WHERE document = $1', [idDocument]);
         await pool.query('DELETE FROM "Document" WHERE id = $1', [idDocument]);
     } catch (err) {
-        console.log(err.message)
-        throw new Error(err.message);
+        throw err;
     }
 };
 
@@ -85,7 +93,8 @@ exports.editMembers = async (currentUser, idDocument, idWorkgroup, members) => {
     // Delete old members
     await pool.query('DELETE FROM "UserDocument" WHERE document = $1', [idDocument]);
     // Add new members
-    for (const member of members) await pool.query('INSERT INTO "UserDocument" (user, document) VALUES ($1, $2)', [member, idDocument]);
+    for (const member of members) 
+        await pool.query('INSERT INTO "UserDocument" (user, document) VALUES ($1, $2)', [member, idDocument]);
 }
 
 exports.editName = async (currentUser, idDocument, idWorkgroup, name) => {
@@ -94,6 +103,10 @@ exports.editName = async (currentUser, idDocument, idWorkgroup, name) => {
     //Se puoi vedere il documento
     if (!await this.enabledToWatch(currentUser, idDocument, idWorkgroup)) 
         throw new Error("Non è possibile editare questo documento");
+    //Verificare che non esistono altri file con lo stesso nome
+    const doc = await this.get(currentUser, idDocument, idWorkgroup);
+    if (await this.isNameUsed(name, doc.isfolder, doc.folder))
+        throw new Error("Esiste gia un documento con lo stesso nome");
     //Allora edit il documento
     await pool.query('UPDATE "Document" SET name = $1 WHERE id = $2', [name, idDocument]);
 }
@@ -103,17 +116,35 @@ exports.editFolder = async (currentUser, idDocument, idWorkgroup, folder) => {
     //Se documento fa parte dello stesso stesso workgroup di cui fai parte
     //Se puoi vedere il documento
     if (!await this.enabledToWatch(currentUser, idDocument, idWorkgroup)) 
-        throw new Error("Non è possibile editare questo documento");
-    //Allora edit il documento
-    await pool.query('UPDATE "Document" SET name = $1 WHERE id = $2', [name, idDocument]);
+        throw new Error("Non puoi accedere a questo documento");
+    //Se il documento è una cartella, verificare che la cartella padre non sia proprio questa cartella
+    if (idDocument == folder)
+        throw new Error("Non puoi spostare la cartella in se stessa");
+    //Se la cartella padre è visibile all'utente corrente
+    if (!await this.enabledToWatch(currentUser, folder, idWorkgroup))
+        throw new Error("Non puoi spostare il documento in una cartella non accessibile");
+    //Verificare che non esistono altri file con lo stesso nome
+    const doc = await this.get(currentUser, idDocument, idWorkgroup);
+    if (await this.isNameUsed(doc.name, doc.isfolder, folder))
+        throw new Error("Esiste gia un documento con lo stesso nome");
+    //Allora cambia padre al documento
+    await pool.query(
+        `UPDATE "Document" SET folder = $1 WHERE id = $2`, 
+        [folder, idDocument]
+    );
 }
 
 exports.enabledToWatch = async (currentUser, idDocument, idWorkgroup) => {
-    const documentOwner = await pool.query(`SELECT * FROM "Document" d WHERE d.id = $1 AND d.owner = $2 AND d.workgroup = $3`, [idDocument, currentUser, idWorkgroup]);
-    const sqlDocumentMembers = `SELECT *
-    FROM "Document" d, "UserDocument" ud, "UserWorkGroup" uw
-    WHERE d.id = $1 AND ud.document = d.id AND ud.userid = $2 AND d.workgroup = $3;`;
-    const documentMember = await pool.query(sqlDocumentMembers, [idDocument, currentUser, idWorkgroup]);
+    const documentOwner = await pool.query( //Verifichiamo se documento appartenga a quel workgroup e se l'utente corrente ne è il proprietario
+        `SELECT * FROM "Document" d WHERE d.id = $1 AND d.owner = $2 AND d.workgroup = $3`, 
+        [idDocument, currentUser, idWorkgroup]
+    );
+    const documentMember = await pool.query( //Verifichiamo che il documento appartenga correttamente al workgroup e che l'utente corrente ne sia membro (doc e workG)
+        `SELECT *
+        FROM "Document" d, "UserDocument" ud, "UserWorkGroup" uw
+        WHERE d.id = $1 AND ud.document = d.id AND ud.userid = $2 AND d.workgroup = $3;`, 
+        [idDocument, currentUser, idWorkgroup]
+    );
 
     var list = [];
     if (documentOwner.rowCount > 0) {
@@ -131,14 +162,50 @@ exports.enabledToWatch = async (currentUser, idDocument, idWorkgroup) => {
             });
         } else list = documentOwner.rows;
     } else list = documentMember.rows;
-    if (list.length > 0 && list[0].id == idDocument /*&& !list[0].isfolder*/) return true;
-    // else if (list.length > 0 && list[0].id === idDocument && list[0].isfolder) {
-    //     const sons = await pool.query(
-    //         `SELECT
-    //         FROM "Document"
-    //         WHERE`,
-    //         []
-    //     );
-    // }
+    
+    if (list.length > 0 && list[0].id == idDocument && !list[0].isfolder) return true;
+    else if (list.length > 0 && list[0].id == idDocument && list[0].isfolder) {
+        if (list[0].owner == currentUser) return true;  //Se cartella vuota e sei owner, visualizza
+        //Se esiste un file al suo interno che puoi visualizzare
+        const documentOwner = await pool.query( //Prendiamo i file figli della cartella che di cui l'utente corrente e il creatore
+            `SELECT * FROM "Document" d WHERE d.folder = $1 AND d.owner = $2 AND d.workgroup = $3`, 
+            [idDocument, currentUser, idWorkgroup]
+        );
+        const documentMember = await pool.query( //Prendiamo i file figli della cartella che l'utente corrente può visualizzare
+            `SELECT *
+            FROM "Document" d, "UserDocument" ud, "UserWorkGroup" uw
+            WHERE d.folder = $1 AND ud.document = d.id AND ud.userid = $2 AND uw.userid = ud.userid AND d.workgroup = $3;`,
+            [idDocument, currentUser, idWorkgroup]
+        );
+
+        if (documentOwner.rowCount > 0 || documentMember.rowCount > 0)
+            return true;
+        return false;
+    }
     else return false;
+}
+
+exports.isNameUsed = async (name, isFolder, idFolder) => {
+    console.log(name, isFolder, idFolder)
+    try {
+        const res = await pool.query(
+            `SELECT * FROM "Document" d WHERE d.name = $1 AND d.isfolder = $2 AND d.folder = $3;`, 
+            [name, isFolder, idFolder]
+        );
+        console.log(res.rows)
+        if (res.rowCount > 0)
+            return true;
+        return false;
+    } catch (err) {
+        throw new Error("Errore esecuzione query di controllo");
+    }
+}
+
+exports.folderChildren = async (idDocument, currentUser) => {
+    const sons = await pool.query(
+        `SELECT
+        FROM "Document" d
+        WHERE d.folder = $1 AND `,
+        []
+    );
 }
