@@ -6,17 +6,13 @@ const cookieSession = require("cookie-session");
 const cors = require("cors");
 const main = express();
 
-main.use(cors());
+main.use(cors({ preflightContinue: true, credentials: true, origin: (_origin, callback) => callback(null, true) }));
 main.use(express.urlencoded({ extended: true }));
 main.use(express.json());
 main.use(
 	cookieSession({
 		name: "token",
 		secret: process.env.SESSION_SECRET,
-		cookie: {
-			httpOnly: true,
-			secure: true,
-		},
 	})
 );
 
