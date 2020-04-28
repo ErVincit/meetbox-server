@@ -69,18 +69,15 @@ exports.delete = async (currentUser, idDocument, idWorkgroup) => {
     const deleteElement = async (document, tree) => {
         if (document.isfolder) {
             const figlioletti = tree[document.id];
-            console.log("Figlioletti", figlioletti);
             if (figlioletti)
                 for (var i = 0; i < figlioletti.length; i++) {
                     deleteElement(figlioletti[i], tree);
                 }
             if (await isFolderEmpty(document.id, idWorkgroup)) {
-                console.log("Cancello cartella:", document.id);
                 await pool.query('DELETE FROM "UserDocument" WHERE document = $1', [document.id]);
                 await pool.query('DELETE FROM "Document" WHERE id = $1', [document.id]);
             }
         } else {
-            console.log("Cancello file:", document.id);
             await pool.query('DELETE FROM "UserDocument" WHERE document = $1', [document.id]);
             await pool.query('DELETE FROM "Document" WHERE id = $1', [document.id]);
         }
@@ -115,7 +112,6 @@ isFolderEmpty = async (idFolder, idWorkgroup) => {
     } catch (err) {
         throw err;
     }
-    console.log("Numero figli rimanenti", resultO.rowCount);
     if (resultO.rowCount > 0) 
         return false;
     else return true;
@@ -225,13 +221,11 @@ exports.enabledToWatch = async (currentUser, idDocument, idWorkgroup) => {
 }
 
 exports.isNameUsed = async (name, isFolder, idFolder) => {
-    console.log(name, isFolder, idFolder)
     try {
         const res = await pool.query(
             `SELECT * FROM "Document" d WHERE d.name = $1 AND d.isfolder = $2 AND d.folder = $3;`, 
             [name, isFolder, idFolder]
         );
-        console.log(res.rows)
         if (res.rowCount > 0)
             return true;
         return false;
