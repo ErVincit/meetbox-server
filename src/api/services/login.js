@@ -8,7 +8,7 @@ exports.login = async (username, password) => {
 		// Confrontare la password dell'utente tramite SQL
 		const id = res.rows[0].id;
 		const resPassword = await pool.query('SELECT uc.password FROM "UserCredential" uc WHERE uc.userid = $1;', [id]);
-		if (resPassword.rowCount > 0 && resPassword.rows[0].password === this.hashing(password)) return id;
+		if (resPassword.rowCount > 0 && resPassword.rows[0].password === this.hashing(password)) return res.rows[0];
 	}
 	throw new Error("Email e/o password sono errati"); 
 };

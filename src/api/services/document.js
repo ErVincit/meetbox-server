@@ -233,12 +233,3 @@ exports.isNameUsed = async (name, isFolder, idFolder) => {
         throw new Error("Errore esecuzione query di controllo");
     }
 }
-
-exports.folderChildren = async (idDocument, currentUser) => {
-    const sons = await pool.query(
-        `SELECT
-        FROM "Document" d
-        WHERE d.folder = $1 AND `,
-        []
-    );
-}

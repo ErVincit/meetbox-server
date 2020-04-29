@@ -9,9 +9,10 @@ router.post("/", async (req, res, next) => {
 	if (token) return res.status(200).send({msg: 'Sei gia stato loggato. In un implementazione futura sarai ridirezionato alla homepage.'}); // Already logged
 	const { email, password } = req.body;
 	try {
-		const iduser = await loginService.login(email, password);
+		const user = await loginService.login(email, password);
+		const iduser = user.id;
 		req.session.token = jwt.sign({iduser}, process.env.JWT_SECRET); //Da aggiungere per farlo scadere -> , {expiresIn: 60*x} -> dove x sono i minuti
-		return res.sendStatus(200);
+		return res.status(200).send({data: user});
 	} catch (err) {
 		return res.sendStatus(401);
 	}

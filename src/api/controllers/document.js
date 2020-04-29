@@ -42,4 +42,5 @@ module.exports = router;
 `NOTE:
     Tutti possono cancellare un file.
     Folder è visibile se e solo se c'è un documento a noi visibile all'interno della cartella
+    Il creatore può vedere sempre il Folder anche se vuoto
 `
