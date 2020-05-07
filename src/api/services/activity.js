@@ -87,10 +87,16 @@ exports.createTask = async (sectionId, workgroupId, userId, title, description) 
 		const max = result.rows[0].max;
 		const index = max !== null ? max + 1 : 0;
 		// Create the task
-		const results = await client.query(
-			'INSERT INTO "Task" (title, description, section, index, owner, completed) VALUES ($1, $2, $3, $4, $5, false) RETURNING *',
-			[title, description, sectionId, index, userId]
-		);
+		let results = await client.query('INSERT INTO "Task" (title, section, index, owner, completed) VALUES ($1, $2, $3, $4, false) RETURNING *', [
+			title,
+			sectionId,
+			index,
+			userId,
+		]);
+		if (description) {
+			const taskId = results.rows[0].id;
+			results = await client.query('UPDATE "Task" SET description = $1 WHERE id = $2 RETURNING *', [description, taskId]);
+		}
 		client.release();
 		return results.rows[0];
 	} catch (err) {
