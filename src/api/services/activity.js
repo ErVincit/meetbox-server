@@ -171,7 +171,7 @@ exports.editTask = async (taskId, sectionId, workgroupId, userId, title, descrip
 		);
 		if (exists.rowCount == 0)
 			throw new Error("Operazione fallita. Potresti aver richiesto di accedere ad una risorsa inesistene o di cui non hai l'accesso");
-		let task;
+		let task = exists.rows[0];
 		// Edit title
 		if (title) {
 			const results = await client.query('UPDATE "Task" SET title = $2 WHERE id = $1 RETURNING *', [taskId, title]);
@@ -211,7 +211,15 @@ exports.editTask = async (taskId, sectionId, workgroupId, userId, title, descrip
 			const exists = await client.query('SELECT * FROM "Section" WHERE workgroup = $1 AND id = $2', [workgroupId, section]);
 			if (exists.rowCount == 0)
 				throw new Error("Operazione fallita. Potresti aver richiesto di accedere ad una risorsa inesistene o di cui non hai l'accesso");
-			const results = await client.query('UPDATE "Task" SET section = $2 WHERE id = $1 RETURNING *', [taskId, section]);
+			const maxResult = await client.query('SELECT MAX(index) as max FROM "Task" WHERE section = $1', [section]);
+			const maxNewSectionIndex = maxResult.rows[0].max ? maxResult.rows[0].max + 1 : "0";
+			const results = await client.query('UPDATE "Task" SET section = $2, index = $3 WHERE id = $1 RETURNING *', [
+				taskId,
+				section,
+				maxNewSectionIndex,
+			]);
+			// Shift all the indexes after the task index
+			await client.query('UPDATE "Task" SET index = index - 1 WHERE section = $1 AND index > $2', [sectionId, task.index]);
 			task = results.rows[0];
 			sectionId = section;
 		}
@@ -225,7 +233,7 @@ exports.editTask = async (taskId, sectionId, workgroupId, userId, title, descrip
 			if (index > maxIndex) throw new Error("L'indice del task deve essere minore del massimo indice");
 
 			// Shift the indexes between the target index and the source index
-			const sourceIndex = exists.rows[0].index;
+			const sourceIndex = task.index;
 			if (sourceIndex > index)
 				await client.query('UPDATE "Task" SET index = index + 1 WHERE section = $1 AND index >= $2 AND index < $3', [
 					sectionId,
