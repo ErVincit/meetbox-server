@@ -15,26 +15,25 @@ exports.createEvent = async (
     throw new Error(
       "E' necessario aggiungere una data d'inizio per creare un evento"
     );
+  if (!timestampEnd)
+    throw new Error(
+      "E' necessario aggiungere una data di fine per creare un evento"
+    );
   if (title.length < 2)
     throw new Error("La lunghezza del nome inserito è inferiore a 2 caratteri");
   const datenow = new Date();
   const dateBegin = new Date(timestampBegin);
+  const dateEnd = new Date(timestampEnd);
   if (dateBegin < datenow)
     throw new Error("La data d'inizio inserita è precedente alla data attuale");
-  let dateEnd;
-  if (timestampEnd) {
-    dateEnd = new Date(timestampEnd);
-    if (dateEnd < dateBegin)
-      throw new Error(
-        "La data di fine inserita è precedente alla data d'inizio"
-      );
-  }
+  if (dateEnd < dateBegin)
+    throw new Error("La data di fine inserita è precedente alla data d'inizio");
   const client = await pool.connect();
   try {
     await workgroupService.checkWorkgroupMembers([userId], idWorkgroup, userId);
     const results = await client.query(
-      'INSERT INTO "Event"(title, "timestampBegin", workgroup, owner) VALUES ($1, $2, $3, $4) RETURNING id',
-      [title, dateBegin, idWorkgroup, userId]
+      'INSERT INTO "Event"(title, "timestampBegin", "timestampEnd", workgroup, owner) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [title, dateBegin, dateEnd, idWorkgroup, userId]
     );
     const idEvent = results.rows[0].id;
     await client.query('INSERT INTO "UserEvent"(userid,event) VALUES ($1,$2)', [
@@ -46,11 +45,6 @@ exports.createEvent = async (
         description,
         idEvent,
       ]);
-    if (timestampEnd)
-      await client.query(
-        'UPDATE "Event" SET "timestampEnd" = $1 WHERE id = $2;',
-        [dateEnd, idEvent]
-      );
     client.release();
     return idEvent;
   } catch (err) {
@@ -192,7 +186,9 @@ exports.updateEvent = async (
         );
     }
     client.release();
-    const getRes = await client.query('SELECT * FROM "Event" WHERE id = $1' , [idEvent]);
+    const getRes = await client.query('SELECT * FROM "Event" WHERE id = $1', [
+      idEvent,
+    ]);
     if (getRes.rowCount > 0) return getRes.rows[0];
     else return {};
   } catch (err) {
