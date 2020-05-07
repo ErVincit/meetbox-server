@@ -192,6 +192,9 @@ exports.updateEvent = async (
         );
     }
     client.release();
+    const getRes = await client.query('SELECT * FROM "Event" WHERE id = $1' , [idEvent]);
+    if (getRes.rowCount > 0) return getRes.rows[0];
+    else return {};
   } catch (err) {
     client.release();
     throw err;

@@ -52,7 +52,7 @@ app.put("/event/:idEvent", async (req, res) => {
       members,
     } = req.body;
     const userId = req.currentUser;
-    await calendarService.updateEvent(
+    const modifiedEvent = await calendarService.updateEvent(
       idWorkgroup,
       userId,
       idEvent,
@@ -62,9 +62,9 @@ app.put("/event/:idEvent", async (req, res) => {
       timestampEnd,
       members
     );
-    res.sendStatus(200);
+    res.send({data: modifiedEvent}).status(200);
   } catch (err) {
-    res.send({ error: err.name, message: err.message });
+    res.send({ error: err.name, message: err.message }).status(400);
   }
 });
 
