@@ -212,7 +212,8 @@ exports.editTask = async (taskId, sectionId, workgroupId, userId, title, descrip
 			if (exists.rowCount == 0)
 				throw new Error("Operazione fallita. Potresti aver richiesto di accedere ad una risorsa inesistene o di cui non hai l'accesso");
 			const maxResult = await client.query('SELECT MAX(index) as max FROM "Task" WHERE section = $1', [section]);
-			const maxNewSectionIndex = maxResult.rows[0].max ? maxResult.rows[0].max + 1 : "0";
+			const max = maxResult.rows[0].max;
+			const maxNewSectionIndex = max !== null && max !== undefined ? max + 1 : "0";
 			const results = await client.query('UPDATE "Task" SET section = $2, index = $3 WHERE id = $1 RETURNING *', [
 				taskId,
 				section,
