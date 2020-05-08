@@ -144,12 +144,17 @@ exports.getAllTasks = async (sectionId, workgroupId, userId) => {
 			throw new Error("Operazione fallita. Potresti aver richiesto di accedere ad una risorsa inesistene o di cui non hai l'accesso");
 		// Get all the tasks of the user
 		const results = await client.query('SELECT * FROM "Task" WHERE section = $1 ORDER BY index', [sectionId]);
-		// Get all the members of the tasks
 		const data = [];
+		// Get the label
 		for (const task of results.rows) {
-			const members = await this.getAllMembers(task.id, sectionId, workgroupId, userId);
-			data.push({ ...task, members });
+			if (task.label) {
+				const res = await client.query('SELECT * FROM "Label" WHERE id = $1', [task.label]);
+				task.label = res.rows[0];
+			}
+			data.push(task);
 		}
+		// Get all the members of the tasks
+		for (const task of data) data.members = await this.getAllMembers(task.id, sectionId, workgroupId, userId);
 		// Get all the attachments of the tasks
 		for (const task of data) task.attachments = await this.getAllAttachments(task.id, sectionId, workgroupId, userId);
 		client.release();
@@ -271,6 +276,11 @@ exports.editTask = async (taskId, sectionId, workgroupId, userId, title, descrip
 		if (!task) {
 			const results = await client.query('SELECT * FROM "Task" WHERE id = $1', [taskId]);
 			task = results.rows[0];
+		}
+		// Get the label
+		if (task.label) {
+			const res = await client.query('SELECT * FROM "Label" WHERE id = $1', [task.label]);
+			task.label = res.rows[0];
 		}
 		// Add members to the task object
 		task.members = await this.getAllMembers(taskId, sectionId, workgroupId, userId);
