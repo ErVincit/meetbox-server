@@ -154,7 +154,7 @@ exports.getAllTasks = async (sectionId, workgroupId, userId) => {
 			data.push(task);
 		}
 		// Get all the members of the tasks
-		for (const task of data) data.members = await this.getAllMembers(task.id, sectionId, workgroupId, userId);
+		for (const task of data) task.members = await this.getAllMembers(task.id, sectionId, workgroupId, userId);
 		// Get all the attachments of the tasks
 		for (const task of data) task.attachments = await this.getAllAttachments(task.id, sectionId, workgroupId, userId);
 		client.release();

@@ -1,10 +1,22 @@
 const pool = require("../../database");
 
+const activityService = require("./activity");
+
 exports.getAllWorkgroups = async (userId) => {
 	const results = await pool.query('SELECT wg.* FROM "UserWorkGroup" uwg, "WorkGroup" wg WHERE uwg.userid = $1 AND uwg.workgroup = wg.id', [
 		userId,
 	]);
-	return results.rows;
+	const data = [];
+	// Add workgroup members
+	for (const workgroup of results.rows) {
+		const members = await this.getAllMembers(userId, workgroup.id);
+		data.push({ ...workgroup, members });
+	}
+	// Add labels
+	for (const workgroup of data) {
+		workgroup.labels = await activityService.getAllLabels(workgroup.id, userId);
+	}
+	return data;
 };
 
 exports.getWorkgroup = async (userId, workgroupId) => {
