@@ -61,7 +61,7 @@ exports.changeSectionTitle = async (newTitle, sectionId, workgroupId, userId) =>
 exports.getAllSections = async (workgroupId, userId) => {
 	// Get all the sections of the user
 	const results = await pool.query(
-		'SELECT s.* FROM "UserWorkGroup" uwg, "Section" s WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND s.workgroup = uwg.workgroup',
+		'SELECT s.* FROM "UserWorkGroup" uwg, "Section" s WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND s.workgroup = uwg.workgroup ORDER BY s.id',
 		[userId, workgroupId]
 	);
 	const data = [];
