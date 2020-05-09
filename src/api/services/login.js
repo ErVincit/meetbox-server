@@ -1,5 +1,5 @@
 const pool = require("../../database");
-const crypto = require('crypto');
+const crypto = require("crypto");
 
 exports.login = async (username, password) => {
 	const sqlUsernameExists = 'SELECT * FROM "User" u WHERE u.email = $1';
@@ -10,7 +10,7 @@ exports.login = async (username, password) => {
 		const resPassword = await pool.query('SELECT uc.password FROM "UserCredential" uc WHERE uc.userid = $1;', [id]);
 		if (resPassword.rowCount > 0 && resPassword.rows[0].password === this.hashing(password)) return res.rows[0];
 	}
-	throw new Error("Email e/o password sono errati"); 
+	throw new Error("Email e/o password sono errati");
 };
 
 exports.registration = async (email, firstName, lastName, password) => {
@@ -30,8 +30,13 @@ exports.registration = async (email, firstName, lastName, password) => {
 	}
 };
 
+exports.getUser = async (userId) => {
+	const results = await pool.query('SELECT * FROM "User" WHERE id = $1;', [userId]);
+	return results.rows[0];
+};
+
 exports.hashing = (password) => {
-	const hash = crypto.createHash('sha512');
+	const hash = crypto.createHash("sha512");
 	hash.update(password);
-	return hash.digest('hex');
-}
+	return hash.digest("hex");
+};
