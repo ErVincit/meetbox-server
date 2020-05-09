@@ -92,7 +92,11 @@ exports.updateEvent = async (
       'SELECT * FROM "UserEvent" WHERE userid = $1 and event = $2',
       [userId, idEvent]
     );
-    if (results.rowCount == 0)
+    const resOwner = await pool.query(
+      'SELECT * FROM "Event" WHERE id = $1 and owner = $2',
+      [idEvent, userId]
+    );
+    if (results.rowCount == 0 && resOwner.rowCount == 0)
       throw new Error("Non hai i permessi per modificare questo evento");
     // check title length
     if (title) {
@@ -185,19 +189,39 @@ exports.updateEvent = async (
           [member, idEvent]
         );
     }
-    client.release();
     const getRes = await client.query('SELECT * FROM "Event" WHERE id = $1', [
       idEvent,
     ]);
-    if (getRes.rowCount > 0) return getRes.rows[0];
-    else return {};
+    if (getRes.rowCount > 0) {
+      const event = getRes.rows[0];
+      const members = await this.getAllMembers(event.id);
+      var isOwnerPresent = false;
+      for (let i = 0; i < members.length; i++) {
+        if (members[i].id == userId) isOwnerPresent = true;
+      }
+      if (!isOwnerPresent) {
+        const getUser = await client.query('SELECT * FROM "User" WHERE id = $1', [
+          userId,
+        ]);
+        if (getUser.rowCount > 0) {
+          members.push(getUser.rows[0]);
+        }
+      }
+      event.members = members;
+      client.release();
+      return event;
+    }
+    else {
+      client.release();
+      return {};
+    }
   } catch (err) {
     client.release();
     throw err;
   }
 };
 
-exports.getEvents = async (idWorkgroup, from, to) => {
+exports.getEvents = async (idWorkgroup, userId, from, to) => {
   const client = await pool.connect();
   try {
     let result;
@@ -209,6 +233,18 @@ exports.getEvents = async (idWorkgroup, from, to) => {
       );
       for (const event of result.rows) {
         const members = await this.getAllMembers(event.id);
+        var isOwnerPresent = false;
+        for (let i = 0; i < members.length; i++) {
+          if (members[i].id == userId) isOwnerPresent = true;
+        }
+        if (!isOwnerPresent) {
+          const getUser = await client.query('SELECT * FROM "User" WHERE id = $1', [
+            userId,
+          ]);
+          if (getUser.rowCount > 0) {
+            members.push(getUser.rows[0]);
+          }
+        }
         data.push({ ...event, members });
       }
     } else if (to && !from) {

@@ -71,8 +71,9 @@ app.put("/event/:idEvent", async (req, res) => {
 app.get("/events", async (req, res) => {
   try {
     const idWorkgroup = req.params.idWorkgroup;
+    const userId = req.currentUser;
     const { from, to } = req.query;
-    const events = await calendarService.getEvents(idWorkgroup, from, to);
+    const events = await calendarService.getEvents(idWorkgroup, userId, from, to);
     return res.json({ data: events });
   } catch (err) {
     res.send({ error: err.name, message: err.message });
