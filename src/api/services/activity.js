@@ -97,8 +97,13 @@ exports.createTask = async (sectionId, workgroupId, userId, title, description) 
 			const taskId = results.rows[0].id;
 			results = await client.query('UPDATE "Task" SET description = $1 WHERE id = $2 RETURNING *', [description, taskId]);
 		}
+		const task = results.rows[0];
+		// Add members to the task object
+		task.members = [];
+		// Add attachments to the task object
+		task.attachments = [];
 		client.release();
-		return results.rows[0];
+		return task;
 	} catch (err) {
 		client.release();
 		throw err;
