@@ -194,19 +194,7 @@ exports.updateEvent = async (
     ]);
     if (getRes.rowCount > 0) {
       const event = getRes.rows[0];
-      const members = await this.getAllMembers(event.id);
-      var isOwnerPresent = false;
-      for (let i = 0; i < members.length; i++) {
-        if (members[i].id == userId) isOwnerPresent = true;
-      }
-      if (!isOwnerPresent) {
-        const getUser = await client.query('SELECT * FROM "User" WHERE id = $1', [
-          userId,
-        ]);
-        if (getUser.rowCount > 0) {
-          members.push(getUser.rows[0]);
-        }
-      }
+      const members = await this.getAllMembers(event.id, event.owner);
       event.members = members;
       client.release();
       return event;
@@ -232,19 +220,7 @@ exports.getEvents = async (idWorkgroup, userId, from, to) => {
         [idWorkgroup, new Date(from)]
       );
       for (const event of result.rows) {
-        const members = await this.getAllMembers(event.id);
-        var isOwnerPresent = false;
-        for (let i = 0; i < members.length; i++) {
-          if (members[i].id == userId) isOwnerPresent = true;
-        }
-        if (!isOwnerPresent) {
-          const getUser = await client.query('SELECT * FROM "User" WHERE id = $1', [
-            userId,
-          ]);
-          if (getUser.rowCount > 0) {
-            members.push(getUser.rows[0]);
-          }
-        }
+        const members = await this.getAllMembers(event.id, event.owner);
         data.push({ ...event, members });
       }
     } else if (to && !from) {
@@ -283,10 +259,25 @@ exports.getEvents = async (idWorkgroup, userId, from, to) => {
   }
 };
 
-exports.getAllMembers = async (idEvent) => {
-  const members = await pool.query(
+exports.getAllMembers = async (idEvent, ownerId) => {
+  const client = await pool.connect();
+  const members = await client.query(
     'SELECT u.* FROM "UserEvent" ue, "User" u WHERE u.id = ue.userid AND event = $1',
     [idEvent]
   );
+  if (ownerId && !this.userPresent(members.rows, ownerId)) {
+    const owner = await client.query('SELECT * FROM "User" WHERE id = $1', [
+      ownerId,
+    ]);
+    if (owner.rowCount > 0) members.rows.push(owner.rows[0]);
+  }
+  client.release();
   return members.rows;
 };
+
+
+exports.userPresent = (members, ownerId) => {
+  for (let i = 0; i < members.length; i++) 
+    if (members[i].id == ownerId) return true;
+  return false;
+}
