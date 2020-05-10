@@ -9,7 +9,7 @@ app.post("/event", async (req, res) => {
   try {
     const idWorkgroup = req.params.idWorkgroup;
     const { title, description, timestampBegin, timestampEnd } = req.body;
-    const id = await calendarService.createEvent(
+    const event = await calendarService.createEvent(
       title,
       description,
       timestampBegin,
@@ -17,14 +17,7 @@ app.post("/event", async (req, res) => {
       idWorkgroup,
       req.currentUser
     );
-    res.send({
-      id,
-      title,
-      description,
-      timestampBegin,
-      timestampEnd,
-      idWorkgroup,
-    });
+    res.send({data: event});
   } catch (err) {
     res.send({ error: err.name, message: err.message });
   }

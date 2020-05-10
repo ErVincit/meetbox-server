@@ -45,8 +45,20 @@ exports.createEvent = async (
         description,
         idEvent,
       ]);
-    client.release();
-    return idEvent;
+    const getRes = await client.query('SELECT * FROM "Event" WHERE id = $1', [
+      idEvent,
+    ]);
+    if (getRes.rowCount > 0) {
+      const event = getRes.rows[0];
+      const members = await this.getAllMembers(event.id, event.owner);
+      event.members = members;
+      client.release();
+      return event;
+    }
+    else {
+      client.release();
+      return {};
+    }
   } catch (err) {
     client.release();
     throw err;
