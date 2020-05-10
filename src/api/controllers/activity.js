@@ -55,9 +55,9 @@ router.get("/section", async (req, res) => {
 router.post("/section/:idSection/task", async (req, res) => {
 	try {
 		const { idWorkgroup, idSection } = req.params;
-		const { title, description } = req.body;
+		const { title, description, label, members } = req.body;
 		if (!title) throw new Error("E' necessario aggiungere un titolo per creare un'attività");
-		const task = await activityService.createTask(idSection, idWorkgroup, req.currentUser, title, description);
+		const task = await activityService.createTask(idSection, idWorkgroup, req.currentUser, title, description, label, members);
 		res.json({ data: task });
 	} catch (err) {
 		res.json({ error: err.name, message: err.message });
