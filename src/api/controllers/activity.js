@@ -10,6 +10,8 @@ router.post("/section", async (req, res) => {
 		const { title } = req.body;
 		if (!title) throw new Error("E' necessario aggiungere un titolo per creare una sezione");
 		const section = await activityService.createSection(title, idWorkgroup, req.currentUser);
+		section.tasks = [];
+		section.members = [];
 		res.json({ data: section });
 	} catch (err) {
 		res.json({ error: err.name, message: err.message });
@@ -31,9 +33,8 @@ router.delete("/section/:idSection", async (req, res) => {
 router.put("/section/:idSection/edit", async (req, res) => {
 	try {
 		const { idWorkgroup, idSection } = req.params;
-		const { title } = req.body;
-		if (!title) throw new Error("E' necessario aggiungere un titolo per cambiare il titolo di una sezione");
-		const section = await activityService.changeSectionTitle(title, idSection, idWorkgroup, req.currentUser);
+		const { title, index } = req.body;
+		const section = await activityService.editSection(idSection, idWorkgroup, req.currentUser, title, index);
 		res.json({ data: section });
 	} catch (err) {
 		res.json({ error: err.name, message: err.message });

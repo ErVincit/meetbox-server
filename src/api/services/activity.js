@@ -9,8 +9,16 @@ exports.createSection = async (title, workgroupId, userId) => {
 		const exists = await client.query('SELECT * FROM "UserWorkGroup" uwg WHERE uwg.userid = $1 AND uwg.workgroup = $2', [userId, workgroupId]);
 		if (exists.rowCount == 0)
 			throw new Error("Operazione fallita. Potresti aver richiesto di accedere ad una risorsa inesistene o di cui non hai l'accesso");
+		// Find max index section
+		const result = await client.query('SELECT MAX(index) as max FROM "Section" WHERE workgroup = $1', [workgroupId]);
+		const max = result.rows[0].max;
+		const index = max !== null ? max + 1 : 0;
 		// Create section
-		const results = await client.query('INSERT INTO "Section" (title, workgroup) VALUES ($1, $2) RETURNING *', [title, workgroupId]);
+		const results = await client.query('INSERT INTO "Section" (title, workgroup, index) VALUES ($1, $2, $3) RETURNING *', [
+			title,
+			workgroupId,
+			index,
+		]);
 		client.release();
 		return results.rows[0];
 	} catch (err) {
@@ -26,30 +34,61 @@ exports.deleteSection = async (sectionId, workgroupId, userId) => {
 		const exists = await client.query('SELECT * FROM "UserWorkGroup" uwg WHERE uwg.userid = $1 AND uwg.workgroup = $2', [userId, workgroupId]);
 		if (exists.rowCount == 0)
 			throw new Error("Operazione fallita. Potresti aver richiesto di accedere ad una risorsa inesistene o di cui non hai l'accesso");
+		// Delete all the members of the task
+		const result = await client.query('SELECT * FROM "Task" WHERE section = $1', [sectionId]);
+		for (const task of result.rows) await client.query('DELETE FROM "UserTask" WHERE task = $1', [task.id]);
 		// Delete all the tasks of the section
-		const results = await client.query('DELETE FROM "Task" WHERE section = $1 RETURNING *', [sectionId]);
+		await client.query('DELETE FROM "Task" WHERE section = $1', [sectionId]);
 		// Delete the section
-		await client.query('DELETE FROM "Section" WHERE id = $1', [sectionId]);
+		const results = await client.query('DELETE FROM "Section" WHERE id = $1 RETURNING *', [sectionId]);
 		client.release();
-		return results.rows;
+		return results.rows[0];
 	} catch (err) {
 		client.release();
 		throw err;
 	}
 };
 
-exports.changeSectionTitle = async (newTitle, sectionId, workgroupId, userId) => {
+exports.editSection = async (sectionId, workgroupId, userId, title, index) => {
 	const client = await pool.connect();
 	try {
 		// Check preconditions
 		const exists = await client.query(
-			'SELECT * FROM "UserWorkGroup" uwg, "Section" s WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND s.workgroup = uwg.workgroup AND s.id = $3',
+			'SELECT s.* FROM "UserWorkGroup" uwg, "Section" s WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND s.workgroup = uwg.workgroup AND s.id = $3',
 			[userId, workgroupId, sectionId]
 		);
 		if (exists.rowCount == 0)
 			throw new Error("Operazione fallita. Potresti aver richiesto di accedere ad una risorsa inesistene o di cui non hai l'accesso");
+		const section = exists.rows[0];
+		let result;
 		// Change title
-		const result = await client.query('UPDATE "Section" SET title = $1 WHERE id = $2 RETURNING *', [newTitle, sectionId]);
+		if (title) result = await client.query('UPDATE "Section" SET title = $1 WHERE id = $2 RETURNING *', [title, sectionId]);
+		if (index !== undefined && index !== null) {
+			// Check if index less than zero
+			if (index < 0) throw new Error("L'indice della section deve essere positivo");
+
+			// Check if index greater than the max index value for the section
+			const maxIndex = (await client.query('SELECT MAX(index) as max FROM "Section" WHERE workgroup = $1', [workgroupId])).rows[0].max;
+			if (index > maxIndex) throw new Error("L'indice della section deve essere minore del massimo indice");
+
+			// Shift the indexes between the target index and the source index
+			const sourceIndex = section.index;
+			if (sourceIndex > index)
+				await client.query('UPDATE "Section" SET index = index + 1 WHERE workgroup = $1 AND index >= $2 AND index < $3', [
+					workgroupId,
+					index,
+					sourceIndex,
+				]);
+			else if (sourceIndex < index)
+				await client.query('UPDATE "Section" SET index = index - 1 WHERE workgroup = $1 AND index <= $2 AND index > $3', [
+					workgroupId,
+					index,
+					sourceIndex,
+				]);
+
+			// Change the index of the section
+			result = await client.query('UPDATE "Section" SET index = $2 WHERE id = $1 RETURNING *', [sectionId, index]);
+		}
 		client.release();
 		return result.rows[0];
 	} catch (err) {
@@ -61,7 +100,7 @@ exports.changeSectionTitle = async (newTitle, sectionId, workgroupId, userId) =>
 exports.getAllSections = async (workgroupId, userId) => {
 	// Get all the sections of the user
 	const results = await pool.query(
-		'SELECT s.* FROM "UserWorkGroup" uwg, "Section" s WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND s.workgroup = uwg.workgroup ORDER BY s.id',
+		'SELECT s.* FROM "UserWorkGroup" uwg, "Section" s WHERE uwg.userid = $1 AND uwg.workgroup = $2 AND s.workgroup = uwg.workgroup ORDER BY s.index',
 		[userId, workgroupId]
 	);
 	const data = [];
