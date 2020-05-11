@@ -277,12 +277,6 @@ exports.getAllMembers = async (idEvent, ownerId) => {
     'SELECT u.* FROM "UserEvent" ue, "User" u WHERE u.id = ue.userid AND event = $1',
     [idEvent]
   );
-  if (ownerId && !this.userPresent(members.rows, ownerId)) {
-    const owner = await client.query('SELECT * FROM "User" WHERE id = $1', [
-      ownerId,
-    ]);
-    if (owner.rowCount > 0) members.rows.push(owner.rows[0]);
-  }
   client.release();
   return members.rows;
 };
