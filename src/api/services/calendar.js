@@ -7,7 +7,8 @@ exports.createEvent = async (
   timestampBegin,
   timestampEnd,
   idWorkgroup,
-  userId
+  userId,
+  members
 ) => {
   if (!title)
     throw new Error("E' necessario aggiungere un titolo per creare un evento");
@@ -29,6 +30,19 @@ exports.createEvent = async (
   if (dateEnd < dateBegin)
     throw new Error("La data di fine inserita è precedente alla data d'inizio");
   const client = await pool.connect();
+  //check if member/members is/are in relation with that idWorkGroup in UserWorkGroup (so if they are allowed)
+  if (members) {
+    if (
+      !(await workgroupService.checkWorkgroupMembers(
+        members,
+        idWorkgroup,
+        userId
+      ))
+    )
+      throw new Error(
+        "Alcuni membri non possono essere aggiunti perchè non appartenenti a questo workgroup"
+      );
+  }
   try {
     await workgroupService.checkWorkgroupMembers([userId], idWorkgroup, userId);
     const results = await client.query(
@@ -40,6 +54,14 @@ exports.createEvent = async (
       userId,
       idEvent,
     ]);
+    if (members) {
+      await client.query('DELETE FROM "UserEvent" WHERE event = $1', [idEvent]);
+      for (const member of members)
+        await client.query(
+          'INSERT INTO "UserEvent" (userid, event) VALUES ($1,$2)',
+          [member, idEvent]
+        );
+    }
     if (description)
       await client.query('UPDATE "Event" SET description = $1 WHERE id = $2', [
         description,
@@ -50,7 +72,7 @@ exports.createEvent = async (
     ]);
     if (getRes.rowCount > 0) {
       const event = getRes.rows[0];
-      const members = await this.getAllMembers(event.id, event.owner);
+      const members = await this.getAllMembers(event.id);
       event.members = members;
       client.release();
       return event;
@@ -236,7 +258,7 @@ exports.getEvents = async (idWorkgroup, userId, from, to) => {
         [idWorkgroup, new Date(from)]
       );
       for (const event of result.rows) {
-        const members = await this.getAllMembers(event.id, event.owner);
+        const members = await this.getAllMembers(event.id);
         data.push({ ...event, members });
       }
     } else if (to && !from) {
@@ -275,7 +297,7 @@ exports.getEvents = async (idWorkgroup, userId, from, to) => {
   }
 };
 
-exports.getAllMembers = async (idEvent, ownerId) => {
+exports.getAllMembers = async (idEvent) => {
   const client = await pool.connect();
   const members = await client.query(
     'SELECT u.* FROM "UserEvent" ue, "User" u WHERE u.id = ue.userid AND event = $1',

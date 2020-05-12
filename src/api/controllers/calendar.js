@@ -8,14 +8,15 @@ const pool = require("../../database");
 app.post("/event", async (req, res) => {
   try {
     const idWorkgroup = req.params.idWorkgroup;
-    const { title, description, timestampBegin, timestampEnd } = req.body;
+    const { title, description, timestampBegin, timestampEnd, members } = req.body;
     const event = await calendarService.createEvent(
       title,
       description,
       timestampBegin,
       timestampEnd,
       idWorkgroup,
-      req.currentUser
+      req.currentUser,
+      members
     );
     res.send({data: event});
   } catch (err) {
