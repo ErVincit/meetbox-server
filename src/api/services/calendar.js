@@ -72,7 +72,11 @@ exports.deleteEvent = async (userId, eventId) => {
       'SELECT * FROM "UserEvent" WHERE userid = $1 and event = $2',
       [userId, eventId]
     );
-    if (result.rowCount == 0)
+    const resOwner = await pool.query(
+      'SELECT * FROM "Event" WHERE id = $1 and owner = $2',
+      [eventId, userId]
+    );
+    if (result.rowCount == 0 && resOwner.rowCount == 0)
       throw new Error("Non hai i permessi per modificare questo evento");
     await client.query('DELETE FROM "UserEvent" WHERE event = $1', [eventId]);
     const results = await client.query(
