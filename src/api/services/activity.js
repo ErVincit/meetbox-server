@@ -375,6 +375,9 @@ exports.deleteLabel = async (labelId, workgroupId, userId) => {
 		);
 		if (exists.rowCount == 0)
 			throw new Error("Operazione fallita. Potresti aver richiesto di accedere ad una risorsa inesistene o di cui non hai l'accesso");
+		// Remove all the FK in Task
+		await client.query('UPDATE "Task" SET label = NULL WHERE label = $1', [labelId]);
+		// Delete the label
 		const results = await client.query('DELETE FROM "Label" WHERE id = $1 RETURNING *', [labelId]);
 		client.release();
 		return results.rows[0];
