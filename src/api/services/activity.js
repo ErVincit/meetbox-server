@@ -132,7 +132,7 @@ exports.createTask = async (sectionId, workgroupId, userId, title, description, 
 			index,
 			userId,
 		]);
-		const task = results.rows[0];
+		let task = results.rows[0];
 		// Add description
 		if (description) {
 			results = await client.query('UPDATE "Task" SET description = $1 WHERE id = $2 RETURNING *', [description, task.id]);
@@ -144,7 +144,7 @@ exports.createTask = async (sectionId, workgroupId, userId, title, description, 
 			if (result.rowCount == 0)
 				throw new Error("Operazione fallita. Potresti aver richiesto di accedere ad una risorsa inesistene o di cui non hai l'accesso");
 			const results = await client.query('UPDATE "Task" SET label = $2 WHERE id = $1 RETURNING *', [task.id, label]);
-			task.label = results.rows[0];
+			task = results.rows[0];
 		}
 		// Add members
 		if (members) {
