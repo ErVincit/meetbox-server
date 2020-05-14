@@ -22,4 +22,7 @@ router.use(async (req, res, next) => {
 const workgroup = require("./controllers/workgroup");
 router.use("/workgroup", workgroup);
 
+const search = require("./controllers/search");
+router.use("/search", search);
+
 module.exports = router;

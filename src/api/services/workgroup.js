@@ -33,13 +33,17 @@ exports.createWorkgroup = async (userId, name, image) => {
 	const client = await pool.connect();
 	try {
 		const result = await client.query('INSERT INTO "WorkGroup"(name, image, owner) VALUES ($1, $2, $3) RETURNING *', [name, image, userId]);
-		const workgroupId = result.rows[0].id;
-		await client.query('INSERT INTO "UserWorkGroup" VALUES ($1, $2)', [userId, workgroupId]);
+		const workgroup = result.rows[0];
+		await client.query('INSERT INTO "UserWorkGroup" VALUES ($1, $2)', [userId, workgroup.id]);
+		// Add workgroup members
+		workgroup.members = await this.getAllMembers(userId, workgroup.id);
+		// Add labels
+		workgroup.labels = await activityService.getAllLabels(workgroup.id, userId);
 		client.release();
-		return result.rows[0];
+		return workgroup;
 	} catch (err) {
 		client.release();
-		throw new Error(err.message);
+		throw err;
 	}
 };
 
@@ -58,17 +62,27 @@ exports.deleteWorkgroup = async (userId, workgroupId) => {
 		return results.rows[0];
 	} catch (err) {
 		client.release();
-		throw new Error(err.message);
+		throw err;
 	}
 };
 
 exports.addMember = async (userId, workgroupId, memberId) => {
-	// Get the workgroup
-	const workgroup = await this.getWorkgroup(userId, workgroupId);
-	// Check if the user is the owner of the workgroup
-	if (workgroup.owner !== userId) throw new Error("Solo il proprietario del workgroup può aggiungere un membro");
-	// Add the new member
-	await pool.query('INSERT INTO "UserWorkGroup" VALUES ($1, $2)', [memberId, workgroupId]);
+	const client = await pool.connect();
+	try {
+		// Get the workgroup
+		const workgroup = await this.getWorkgroup(userId, workgroupId);
+		// Check if the user is the owner of the workgroup
+		if (workgroup.owner !== userId) throw new Error("Solo il proprietario del workgroup può aggiungere un membro");
+		// Add the new member
+		await client.query('INSERT INTO "UserWorkGroup" VALUES ($1, $2)', [memberId, workgroupId]);
+		// Return the member added
+		const results = await client.query('SELECT * FROM "User" WHERE id = $1', [memberId]);
+		client.release();
+		return results.rows[0];
+	} catch (err) {
+		client.release();
+		throw err;
+	}
 };
 
 exports.removeMember = async (userId, workgroupId, memberId) => {

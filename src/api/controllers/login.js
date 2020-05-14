@@ -31,6 +31,11 @@ router.get("/validate", async (req, res, next) => {
 	return res.sendStatus(401);
 });
 
+router.put("/signout", async (req, res) => {
+	req.session = null;
+	return res.sendStatus(200);
+});
+
 router.post("/registration", async (req, res) => {
 	const { email, firstName, lastName, password } = req.body;
 	if (!email || !firstName || !lastName || !password) return res.status(418);
