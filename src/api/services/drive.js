@@ -41,6 +41,7 @@ exports.tree = async (currentUser, workgroup) => {
         const document = list[i];
         if (document.folder === null || document.folder === undefined) document.folder = "root";
         if (!Object.keys(listOfDirectory).includes("" + document.folder)) listOfDirectory[document.folder] = [];
+        if (document.isfolder && !Object.keys(listOfDirectory).includes("" + document.id)) listOfDirectory[document.id] = [];
         listOfDirectory[document.folder].push(document);
     }
     return listOfDirectory;
