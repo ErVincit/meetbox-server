@@ -37,6 +37,7 @@ exports.tree = async (currentUser, workgroup) => {
   } else list = resultM.rows;
 
   listOfDirectory = {};
+  if (list-length === 0) listOfDirectory["root"].push([]);
   for (var i = 0; i < list.length; i++) {
     const document = list[i];
     if (document.folder === null || document.folder === undefined)
