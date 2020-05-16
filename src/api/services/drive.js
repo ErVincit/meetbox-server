@@ -49,7 +49,8 @@ exports.tree = async (currentUser, workgroup) => {
       !Object.keys(listOfDirectory).includes("" + document.id)
     )
       listOfDirectory[document.id] = [];
-    listOfDirectory[document.folder].push(document);
+    if (!document.task)
+      listOfDirectory[document.folder].push(document);
   }
   return listOfDirectory;
 };
