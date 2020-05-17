@@ -19,6 +19,32 @@ exports.getAllWorkgroups = async (userId) => {
 	return data;
 };
 
+exports.editWorkgroup = async (userId, workgroupId, name, image) => {
+	const client = await pool.connect();
+	try {
+		if (!this.checkWorkgroupMembers([userId], workgroupId, userId))
+			throw new Error("Operazione fallita. Potresti aver richiesto di accedere ad una risorsa inesistene o di cui non hai l'accesso");
+		let workgroup;
+		if (name) {
+			const result = await client.query('UPDATE "WorkGroup" SET name = $1 WHERE id = $2 RETURNING *', [name, workgroupId]);
+			workgroup = result.rows[0];
+		}
+		if (image) {
+			const result = await client.query('UPDATE "WorkGroup" SET image = $1 WHERE id = $2 RETURNING *', [image, workgroupId]);
+			workgroup = result.rows[0];
+		}
+		// Add workgroup members
+		workgroup.members = await this.getAllMembers(userId, workgroup.id);
+		// Add labels
+		workgroup.labels = await activityService.getAllLabels(workgroup.id, userId);
+		client.release();
+		return workgroup;
+	} catch (err) {
+		client.release();
+		throw err;
+	}
+};
+
 exports.getWorkgroup = async (userId, workgroupId) => {
 	const results = await pool.query(
 		'SELECT wg.* FROM "UserWorkGroup" uwg, "WorkGroup" wg WHERE uwg.userid = $1 AND uwg.workgroup = wg.id AND wg.id = $2',

@@ -28,6 +28,20 @@ router.post("/", async (req, res) => {
 	}
 });
 
+// Edit workgroup
+router.put("/:idWorkgroup/edit", async (req, res) => {
+	try {
+		const userId = req.currentUser;
+		const { idWorkgroup } = req.params;
+		const { name, image } = req.body;
+		if (!name && !image) throw new Error("E' necessario aggiungere almeno un campo da modificare");
+		const workgroup = await workgroupService.editWorkgroup(userId, idWorkgroup, name, image);
+		res.json({ data: workgroup });
+	} catch (err) {
+		res.json({ error: err.name, message: err.message });
+	}
+});
+
 // Get specific workgroup
 router.get("/:idWorkgroup", async (req, res) => {
 	try {
