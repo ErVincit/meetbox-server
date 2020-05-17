@@ -69,10 +69,10 @@ exports.tree = async (currentUser, workgroup) => {
 	for (var i = 0; i < list.length; i++) {
     let document = list[i];
     if (document.folder === null || document.folder === undefined) document.folder = ROOT;
-    //Permette visione delle proprie cartelle
+    // Permette visione delle proprie cartelle
 		if (document.isfolder && !Object.keys(listOfDirectory).includes("" + document.id)) listOfDirectory[document.id] = []; 
     if (!document.task) {
-      //Permette l'aggiunta di cartelle non proprie ma che contengono documenti visibili
+      // Permette l'aggiunta di cartelle non proprie ma che contengono documenti visibili
       if (!Object.keys(listOfDirectory).includes("" + document.folder)) {
         listOfDirectory[document.folder] = [];
         var tempDirectory = folders[document.folder];
@@ -81,13 +81,18 @@ exports.tree = async (currentUser, workgroup) => {
             listOfDirectory[tempDirectory.folder] = [];
             listOfDirectory[tempDirectory.folder].push(tempDirectory);
             tempDirectory = folders[tempDirectory.folder];
-            if (tempDirectory.folder === ROOT) 
+            if (
+              tempDirectory.folder === ROOT &&
+              listOfDirectory[tempDirectory.folder].filter(d => d.id === tempDirectory.id).length === 0
+            )
               listOfDirectory[tempDirectory.folder].push(tempDirectory);
           }
-        } else 
+        } 
+        else if (listOfDirectory[tempDirectory.folder].filter(d => d.id === tempDirectory.id).length === 0)
           listOfDirectory[tempDirectory.folder].push(tempDirectory);
       }
-      listOfDirectory[document.folder].push(document);
+      if (listOfDirectory[document.folder].filter(d => d.id === document.id).length === 0)
+        listOfDirectory[document.folder].push(document);
     }
 	}
 	return listOfDirectory;
