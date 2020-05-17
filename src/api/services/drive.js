@@ -2,6 +2,8 @@ const pool = require("../../database");
 
 const documentService = require("./document");
 
+const ROOT = "root";
+
 exports.tree = async (currentUser, workgroup) => {
 	const sqlOwner = `SELECT d.id, d.name, d.creationdate, d.isfolder, d.isnote, d.path, d.size, d.owner, d.folder, d.workgroup, d.task
     FROM "Document" d
@@ -10,16 +12,27 @@ exports.tree = async (currentUser, workgroup) => {
 	const sqlMembers = `SELECT d.id, d.name, d.creationdate, d.isfolder, d.isnote, d.path, d.size, d.owner, d.folder, d.workgroup, d.task
 	FROM "Document" d, "UserDocument" ud
     WHERE ud.document = d.id AND ud.userid = $1 AND d.workgroup = $2`;
+
+  const sqlFolder = `SELECT d.id, d.name, d.creationdate, d.isfolder, d.isnote, d.path, d.size, d.owner, d.folder, d.workgroup, d.task
+	FROM "Document" d
+    WHERE d.isfolder = true AND d.workgroup = $1`;
+  
 	var resultO = {};
-	var resultM = {};
+  var resultM = {};
+  var resultF = {};
 	try {
 		resultO = await pool.query(sqlOwner, [currentUser, workgroup]);
 		resultM = await pool.query(sqlMembers, [currentUser, workgroup]);
+		resultF = await pool.query(sqlFolder, [workgroup]);
 	} catch (err) {
 		throw new Error(err.name);
   }
-  
   const members = await documentService.getAllDocumentsMember(workgroup);
+  const folders = {};
+  for (let i = 0; i < resultF.rows.length; i++) {
+    if (!resultF.rows[i].folder) resultF.rows[i].folder = "root";
+    folders[resultF.rows[i].id] = resultF.rows[i];
+  }
   
 	var list = [];
 	if (resultO.rowCount > 0) {
@@ -27,36 +40,54 @@ exports.tree = async (currentUser, workgroup) => {
 			const totalId = [];
 			resultO.rows.forEach((element) => {
 				list.push(element);
-        element.members = members["" + element.id];
-        console.log
+        element.members = members[element.id];
 				totalId.push(element.id);
 			});
 			resultM.rows.forEach((element) => {
 				if (!totalId.includes(element.id)) {
-          element.members = members["" + element.id];
+          element.members = members[element.id];
 					totalId.push(element.id);
 					list.push(element);
 				}
 			});
 		} else {
       for (let i = 0; i < resultO.rowCount; i++)
-        resultO.rows[i]["members"] = members[resultO.rows[i].id];
+        if (!resultO.rows[i].isfolder)
+          resultO.rows[i]["members"] = members[resultO.rows[i].id];
       list = resultO.rows;
     }
 	} else {
-    for (let i = 0; i < resultO.rowCount; i++)
-    resultM.rows[i]["members"] = members[resultM.rows[i].id];
+    for (let i = 0; i < resultM.rowCount; i++)
+      if (!resultM.rows[i].isfolder)
+        resultM.rows[i]["members"] = members[resultM.rows[i].id];
     list = resultM.rows;
   }
-
-	listOfDirectory = {};
-	if (list.length === 0) listOfDirectory["root"] = [];
+  
+  const listOfDirectory = {};
+  listOfDirectory[ROOT] = [];
+	if (list.length === 0) listOfDirectory[ROOT] = [];
 	for (var i = 0; i < list.length; i++) {
-		const document = list[i];
-		if (document.folder === null || document.folder === undefined) document.folder = "root";
-		if (!Object.keys(listOfDirectory).includes("" + document.folder)) listOfDirectory[document.folder] = [];
-		if (document.isfolder && !Object.keys(listOfDirectory).includes("" + document.id)) listOfDirectory[document.id] = [];
-		if (!document.task) listOfDirectory[document.folder].push(document);
+    let document = list[i];
+    if (document.folder === null || document.folder === undefined) document.folder = ROOT;
+    //Permette visione delle proprie cartelle
+		if (document.isfolder && !Object.keys(listOfDirectory).includes("" + document.id)) listOfDirectory[document.id] = []; 
+    if (!document.task) {
+      //Permette l'aggiunta di cartelle non proprie ma che contengono documenti visibili
+      if (!Object.keys(listOfDirectory).includes("" + document.folder)) {
+        listOfDirectory[document.folder] = [];
+        var tempDirectory = folders[document.folder];
+        if (tempDirectory.folder !== ROOT) {
+          while(!Object.keys(listOfDirectory).includes("" + tempDirectory.folder)) {
+            listOfDirectory[tempDirectory.folder] = [];
+            listOfDirectory[tempDirectory.folder].push(tempDirectory);
+            tempDirectory = folders[tempDirectory.folder];
+            if (tempDirectory.folder === ROOT) 
+              listOfDirectory[tempDirectory.folder].push(tempDirectory);
+          }
+        }
+      }
+      listOfDirectory[document.folder].push(document);
+    }
 	}
 	return listOfDirectory;
 };
