@@ -31,10 +31,21 @@ router.post("/create", async (req, res, next) => {
 		return res.status(412).json({
 			error: "Error",
 			message: "Il documento è un file e non contiene i campi path o size",
-    });
-  if (isFolder) members = [];
+		});
 	try {
-		const result = await driveService.create(req.currentUser, name, new Date(), isFolder, isNote, path, size, folder, workgroup, task, members);
+		const result = await driveService.create(
+			req.currentUser,
+			name,
+			new Date(),
+			isFolder,
+			isNote,
+			path,
+			size,
+			folder,
+			workgroup,
+			task,
+			isFolder ? [] : members
+		);
 		return res.json({ data: result });
 	} catch (err) {
 		res.json({ error: err.name, message: err.message });
