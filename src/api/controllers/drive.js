@@ -21,9 +21,7 @@ router.post("/upload", (req, res) => {
 
 router.post("/create", async (req, res, next) => {
 	const workgroup = req.params.idWorkgroup;
-	console.log(req.body);
 	const { name, isFolder, isNote, path, size, folder, task, members } = req.body;
-	console.log(name, isFolder, isNote, workgroup);
 	if (!name || isFolder === undefined || isNote === undefined || !workgroup)
 		return res.status(412).json({
 			error: "Error",

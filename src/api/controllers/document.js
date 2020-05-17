@@ -36,11 +36,13 @@ router.put("/:idDocument/edit", async (req, res, next) => {
 	}
 });
 
+const deleteURL = "http://dotmat.altervista.org/meetbox/delete.php";
+
 router.delete("/:idDocument", async (req, res, next) => {
-	// TODO: Delete file in storage
 	const { idDocument, idWorkgroup } = req.params;
 	try {
 		const data = await documentService.delete(req.currentUser, idDocument, idWorkgroup);
+		if (data.path) request.post(deleteURL, { form: { path: data.path } });
 		res.send({ data });
 	} catch (err) {
 		res.send({ error: err.name, message: err.message });
