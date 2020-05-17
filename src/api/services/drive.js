@@ -84,7 +84,8 @@ exports.tree = async (currentUser, workgroup) => {
             if (tempDirectory.folder === ROOT) 
               listOfDirectory[tempDirectory.folder].push(tempDirectory);
           }
-        }
+        } else 
+          listOfDirectory[tempDirectory.folder].push(tempDirectory);
       }
       listOfDirectory[document.folder].push(document);
     }
