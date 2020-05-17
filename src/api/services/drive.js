@@ -17,24 +17,37 @@ exports.tree = async (currentUser, workgroup) => {
 		resultM = await pool.query(sqlMembers, [currentUser, workgroup]);
 	} catch (err) {
 		throw new Error(err.name);
-	}
-
+  }
+  
+  const members = await documentService.getAllDocumentsMember(workgroup);
+  
 	var list = [];
 	if (resultO.rowCount > 0) {
 		if (resultM.rowCount > 0) {
 			const totalId = [];
 			resultO.rows.forEach((element) => {
 				list.push(element);
+        element.members = members["" + element.id];
+        console.log
 				totalId.push(element.id);
 			});
 			resultM.rows.forEach((element) => {
 				if (!totalId.includes(element.id)) {
+          element.members = members["" + element.id];
 					totalId.push(element.id);
 					list.push(element);
 				}
 			});
-		} else list = resultO.rows;
-	} else list = resultM.rows;
+		} else {
+      for (let i = 0; i < resultO.rowCount; i++)
+        resultO.rows[i]["members"] = members[resultO.rows[i].id];
+      list = resultO.rows;
+    }
+	} else {
+    for (let i = 0; i < resultO.rowCount; i++)
+    resultM.rows[i]["members"] = members[resultM.rows[i].id];
+    list = resultM.rows;
+  }
 
 	listOfDirectory = {};
 	if (list.length === 0) listOfDirectory["root"] = [];

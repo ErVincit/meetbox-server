@@ -52,6 +52,24 @@ exports.setAllMembers = async (currentUser, documentid, members, idWorkgroup) =>
 	}
 };
 
+exports.getAllDocumentsMember = async (idWorkgroup) => {
+    const documentMember = await pool.query(
+        //Verifichiamo che il documento appartenga correttamente al workgroup e che l'utente corrente ne sia membro (doc e workG)
+		`SELECT *
+        FROM "UserDocument" ud, "UserWorkGroup" uw
+        WHERE ud.userid = uw.userid AND uw.workgroup = $1;`,
+		[idWorkgroup]
+        );
+    const membersDocument = {};
+    for(let i = 0; i < documentMember.rowCount; i++) {
+        let document = documentMember.rows[i].document;
+        let user = documentMember.rows[i].userid;
+        if (!Object.keys(membersDocument).includes(document.toString())) membersDocument[document] = [];
+        membersDocument[document].push(user);
+    }
+    return membersDocument;
+}
+
 exports.edit = async (currentUser, idDocument, idWorkgroup, members, name, folder) => {
 	//Se documento esiste e fa parte di quel workgroup -> controlli delegati alle singole funzioni
 	try {
