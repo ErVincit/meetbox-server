@@ -4,49 +4,77 @@ const router = express.Router({ mergeParams: true });
 const documentService = require("../services/document");
 
 router.get("/:idDocument", async (req, res, next) => {
-	const { idDocument, idWorkgroup } = req.params;
-	const document = await documentService.get(req.currentUser, idDocument, idWorkgroup);
-	res.status(200).send({ data: document });
+  const { idDocument, idWorkgroup } = req.params;
+  const document = await documentService.get(
+    req.currentUser,
+    idDocument,
+    idWorkgroup
+  );
+  res.status(200).send({ data: document });
 });
 
 const request = require("request");
-const url = "http://dotmat.altervista.org/meetbox/uploads/";
+const url = "http://meetbox.altervista.org/uploads/";
 
 router.get("/:idDocument/download", async (req, res) => {
-	const { idDocument, idWorkgroup } = req.params;
-	const document = await documentService.get(req.currentUser, idDocument, idWorkgroup);
-	if (document.path === "") res.send({ error: "Errore", message: "Path non presente" });
-	else {
-		res.attachment(document.name);
-		request.post(url + document.path).pipe(res);
-	}
+  const { idDocument, idWorkgroup } = req.params;
+  const document = await documentService.get(
+    req.currentUser,
+    idDocument,
+    idWorkgroup
+  );
+  if (document.path === "")
+    res.send({ error: "Errore", message: "Path non presente" });
+  else {
+    res.attachment(document.name);
+    request.post(url + document.path).pipe(res);
+  }
 });
 
 router.put("/:idDocument/edit", async (req, res, next) => {
-	const { idDocument, idWorkgroup } = req.params;
-	const { members, name, folder } = req.body;
-	const currentUser = req.currentUser;
-	if (!members && !name && !folder) return res.send({ message: await documentService.get(currentUser, idDocument, idWorkgroup) }).status(200);
-	try {
-		await documentService.edit(currentUser, idDocument, idWorkgroup, members, name, folder);
-		return res.send({ messsage: await documentService.get(currentUser, idDocument, idWorkgroup) });
-	} catch (err) {
-		console.log(err);
-		return res.send({ error: err.name, message: err.message }).status(500);
-	}
+  const { idDocument, idWorkgroup } = req.params;
+  const { members, name, folder } = req.body;
+  const currentUser = req.currentUser;
+  if (!members && !name && !folder)
+    return res
+      .send({
+        message: await documentService.get(
+          currentUser,
+          idDocument,
+          idWorkgroup
+        ),
+      })
+      .status(200);
+  try {
+    await documentService.edit(
+      currentUser,
+      idDocument,
+      idWorkgroup,
+      members,
+      name,
+      folder
+    );
+    return res.send({
+      messsage: await documentService.get(currentUser, idDocument, idWorkgroup),
+    });
+  } catch (err) {
+    console.log(err);
+    return res.send({ error: err.name, message: err.message }).status(500);
+  }
 });
 
-const deleteURL = "http://dotmat.altervista.org/meetbox/delete.php";
-
 router.delete("/:idDocument", async (req, res, next) => {
-	const { idDocument, idWorkgroup } = req.params;
-	try {
-		const data = await documentService.delete(req.currentUser, idDocument, idWorkgroup);
-		if (data.path) request.post(deleteURL, { form: { path: data.path } });
-		res.send({ data });
-	} catch (err) {
-		res.send({ error: err.name, message: err.message });
-	}
+  const { idDocument, idWorkgroup } = req.params;
+  try {
+    const data = await documentService.delete(
+      req.currentUser,
+      idDocument,
+      idWorkgroup
+    );
+    res.send({ data });
+  } catch (err) {
+    res.send({ error: err.name, message: err.message });
+  }
 });
 
 module.exports = router;
