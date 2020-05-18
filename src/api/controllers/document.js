@@ -36,7 +36,7 @@ router.put("/:idDocument/edit", async (req, res, next) => {
   const { members, name, folder } = req.body;
   const currentUser = req.currentUser;
   try {
-    if (members || name | folder)
+    if (members || name || folder)
       await documentService.edit(
         currentUser,
         idDocument,

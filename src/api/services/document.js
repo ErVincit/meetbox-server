@@ -272,57 +272,12 @@ exports.editFolder = async (currentUser, idDocument, idWorkgroup, folder) => {
 };
 
 exports.enabledToWatch = async (currentUser, idDocument, idWorkgroup) => {
-  const documentOwner = await pool.query(
-    //Verifichiamo se documento appartenga a quel workgroup e se l'utente corrente ne è il proprietario
-    `SELECT * FROM "Document" d WHERE d.id = $1 AND d.owner = $2 AND d.workgroup = $3`,
-    [idDocument, currentUser, idWorkgroup]
-  );
-  const documentMember = await pool.query(
-    //Verifichiamo che il documento appartenga correttamente al workgroup e che l'utente corrente ne sia membro (doc e workG)
-    `SELECT *
-        FROM "Document" d, "UserDocument" ud, "UserWorkGroup" uw
-        WHERE d.id = $1 AND ud.document = d.id AND ud.userid = $2 AND d.workgroup = $3;`,
-    [idDocument, currentUser, idWorkgroup]
-  );
-
-  var list = [];
-  if (documentOwner.rowCount > 0) {
-    if (documentMember.rowCount > 0) {
-      const totalId = [];
-      documentOwner.rows.forEach((element) => {
-        list.push(element);
-        totalId.push(element.id);
-      });
-      documentMember.rows.forEach((element) => {
-        if (!totalId.includes(element.id)) {
-          totalId.push(element.id);
-          list.push(element);
-        }
-      });
-    } else list = documentOwner.rows;
-  } else list = documentMember.rows;
-
-  if (list.length > 0 && list[0].id == idDocument && !list[0].isfolder)
-    return true;
-  else if (list.length > 0 && list[0].id == idDocument && list[0].isfolder) {
-    if (list[0].owner == currentUser) return true; //Se cartella vuota e sei owner, visualizza
-    //Se esiste un file al suo interno che puoi visualizzare
-    const documentOwner = await pool.query(
-      //Prendiamo i file figli della cartella che di cui l'utente corrente e il creatore
-      `SELECT * FROM "Document" d WHERE d.folder = $1 AND d.owner = $2 AND d.workgroup = $3`,
-      [idDocument, currentUser, idWorkgroup]
-    );
-    const documentMember = await pool.query(
-      //Prendiamo i file figli della cartella che l'utente corrente può visualizzare
-      `SELECT *
-            FROM "Document" d, "UserDocument" ud, "UserWorkGroup" uw
-            WHERE d.folder = $1 AND ud.document = d.id AND ud.userid = $2 AND uw.userid = ud.userid AND d.workgroup = $3;`,
-      [idDocument, currentUser, idWorkgroup]
-    );
-
-    if (documentOwner.rowCount > 0 || documentMember.rowCount > 0) return true;
-    return false;
-  } else return false;
+  const tree = await driveService.tree(currentUser, idWorkgroup);
+  for (let key of Object.keys(tree)) 
+    for (let doc of tree[key]) 
+      if (idDocument == doc.id)
+        return true;
+  return false;
 };
 
 exports.isNameUsed = async (name, isFolder, idFolder) => {
