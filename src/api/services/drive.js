@@ -40,7 +40,7 @@ exports.tree = async (currentUser, workgroup) => {
       const totalId = [];
       resultO.rows.forEach((element) => {
         list.push(element);
-        element.members = members[element.id];
+        element.members = members[element.id] ? members[element.id] : [];
         totalId.push(element.id);
       });
       resultM.rows.forEach((element) => {
@@ -52,8 +52,11 @@ exports.tree = async (currentUser, workgroup) => {
       });
     } else {
       for (let i = 0; i < resultO.rowCount; i++)
-        if (!resultO.rows[i].isfolder)
-          resultO.rows[i]["members"] = members[resultO.rows[i].id];
+        if (!resultO.rows[i].isfolder) {
+          if (members[resultO.rows[i].id])
+            resultO.rows[i]["members"] = members[resultO.rows[i].id];
+          else resultO.rows[i]["members"] = [];
+        }
       list = resultO.rows;
     }
   } else {

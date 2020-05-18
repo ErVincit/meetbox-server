@@ -66,7 +66,7 @@ exports.setAllMembers = async (
     for (var i = 0; i < res.length; i++) members.push(res[i].id);
   } else if (members === null)
     throw new Error("Non è possibile impostare a null il parametro members");
-  else if (members.length === 0) members = [currentUser];
+
   try {
     if (
       !(await workgroupServices.checkWorkgroupMembers(
