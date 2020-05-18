@@ -35,30 +35,23 @@ router.put("/:idDocument/edit", async (req, res, next) => {
   const { idDocument, idWorkgroup } = req.params;
   const { members, name, folder } = req.body;
   const currentUser = req.currentUser;
-  if (!members && !name && !folder)
-    return res
-      .send({
-        message: await documentService.get(
-          currentUser,
-          idDocument,
-          idWorkgroup
-        ),
-      })
-      .status(200);
   try {
-    await documentService.edit(
+    if (members || name | folder)
+      await documentService.edit(
+        currentUser,
+        idDocument,
+        idWorkgroup,
+        members,
+        name,
+        folder
+      );
+    const data = await documentService.get(
       currentUser,
       idDocument,
-      idWorkgroup,
-      members,
-      name,
-      folder
+      idWorkgroup
     );
-    return res.send({
-      messsage: await documentService.get(currentUser, idDocument, idWorkgroup),
-    });
+    return res.send({ data });
   } catch (err) {
-    console.log(err);
     return res.send({ error: err.name, message: err.message }).status(500);
   }
 });

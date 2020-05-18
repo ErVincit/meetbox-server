@@ -4,38 +4,54 @@ const workgroupServices = require("./workgroup");
 const driveService = require("./drive");
 
 exports.get = async (currentUser, idDocument, idWorkgroup) => {
-  const sql = `SELECT d.id, d.name, d.creationdate, d.isfolder, d.isnote, d.path, d.size, d.owner, d.folder, d.workgroup, d.task
-    FROM "Document" d, "UserDocument" ud, "UserWorkGroup" uw
-    WHERE d.id = $1 AND ud.userid = $2 AND uw.userid = ud.userid AND d.workgroup = $3`;
+  const client = await pool.connect();
+  try {
+    const sqlOwner = `SELECT * FROM "Document" WHERE id = $1 AND owner = $2 AND workgroup = $3`;
+    const resOwner = await client.query(sqlOwner, [
+      idDocument,
+      currentUser,
+      idWorkgroup,
+    ]);
 
-  const sqlOwner = `SELECT d.id, d.name, d.creationdate, d.isfolder, d.isnote, d.path, d.size, d.owner, d.folder, d.workgroup, d.task
-    FROM "Document" d
-    WHERE d.id = $1 AND d.owner = $2 AND d.workgroup = $3`;
-  const resOwner = await pool.query(sqlOwner, [
-    idDocument,
-    currentUser,
-    idWorkgroup,
-  ]);
-  const res = await pool.query(sql, [idDocument, currentUser, idWorkgroup]);
+    if (resOwner.rowCount !== 0) {
+      const document = resOwner.rows[0];
+      document.members = await this.getDocumentMembers(idDocument);
+      client.release();
+      return document;
+    }
 
-  var list = [];
-  if (resOwner.rowCount > 0) {
-    if (res.rowCount > 0) {
-      const totalId = [];
-      resOwner.rows.forEach((element) => {
-        list.push(element);
-        totalId.push(element.id);
-      });
-      res.rows.forEach((element) => {
-        if (!totalId.includes(element.id)) {
-          totalId.push(element.id);
-          list.push(element);
-        }
-      });
-    } else list = resOwner.rows;
-  } else list = res.rows;
-  if (list.length > 0) return list[0];
-  return {};
+    const sqlMember = `SELECT d.*
+      FROM "Document" d, "UserDocument" ud, "UserWorkGroup" uw
+      WHERE d.id = $1 AND ud.userid = $2 AND uw.userid = ud.userid AND d.workgroup = $3`;
+    const resMember = await client.query(sqlMember, [
+      idDocument,
+      currentUser,
+      idWorkgroup,
+    ]);
+
+    if (resMember.rowCount !== 0) {
+      const document = resMember.rows[0];
+      document.members = await this.getDocumentMembers(idDocument);
+      client.release();
+      return document;
+    }
+
+    client.release();
+    return {};
+  } catch (err) {
+    client.release();
+    throw err;
+  }
+};
+
+exports.getDocumentMembers = async (idDocument) => {
+  const result = await pool.query(
+    `SELECT userid FROM "UserDocument" WHERE document = $1`,
+    [idDocument]
+  );
+  const list = [];
+  result.rows.forEach((row) => list.push(row.userid));
+  return list;
 };
 
 exports.setAllMembers = async (
@@ -50,8 +66,7 @@ exports.setAllMembers = async (
     for (var i = 0; i < res.length; i++) members.push(res[i].id);
   } else if (members === null)
     throw new Error("Non è possibile impostare a null il parametro members");
-  else if (members === []) members = [currentUser];
-
+  else if (members.length === 0) members = [currentUser];
   try {
     if (
       !(await workgroupServices.checkWorkgroupMembers(
@@ -62,11 +77,12 @@ exports.setAllMembers = async (
     )
       throw new Error("Uno o piu membri non appartengono a questo workgroup");
 
-    for (var j = 0; j < members.length; j++)
+    for (const member of members)
       await pool.query('INSERT INTO "UserDocument" VALUES($1, $2)', [
-        members[j],
+        member,
         documentid,
       ]);
+    return members;
   } catch (err) {
     throw err;
   }
@@ -208,7 +224,7 @@ exports.editMembers = async (currentUser, idDocument, idWorkgroup, members) => {
   // Add new members
   for (const member of members)
     await pool.query(
-      'INSERT INTO "UserDocument" (user, document) VALUES ($1, $2)',
+      'INSERT INTO "UserDocument" (userid, document) VALUES ($1, $2)',
       [member, idDocument]
     );
 };
