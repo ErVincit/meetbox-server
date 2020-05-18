@@ -115,9 +115,30 @@ exports.removeMember = async (userId, workgroupId, memberId) => {
 	// Get the workgroup
 	const workgroup = await this.getWorkgroup(userId, workgroupId);
 	// Check if the user is the owner of the workgroup
-	if (workgroup.owner !== userId) throw new Error("Solo il proprietario del workgroup può rimuovere un membro");
-	// Delete the member
-	await pool.query('DELETE FROM "UserWorkGroup" WHERE userid = $1 AND workgroup = $2', [memberId, workgroupId]);
+	if (workgroup.owner !== userId || userId !== memberId) throw new Error("Solo il proprietario del workgroup può rimuovere questo membro");
+	const client = await pool.connect();
+	try {
+		// Delete all the documents where the deleted user is the owner
+		await client.query('DELETE FROM "Document" WHERE owner = $1 AND workgroup = $2', [memberId, workgroupId]);
+		// Delete the user from the document shared with the user
+		await client.query('DELETE FROM "UserDocument" WHERE userid = $1', [memberId]);
+		// Delete all the tasks where the deleted user is the owner
+		await client.query('DELETE FROM "Task" WHERE owner = $1 AND workgroup = $2', [memberId, workgroupId]);
+		// Delete the user from the tasks assigned to the user
+		await client.query('DELETE FROM "UserTask" WHERE userid = $1', [memberId]);
+		// Delete all the events where the deleted user is the owner
+		await client.query('DELETE FROM "Event" WHERE owner = $1 AND workgroup = $2', [memberId, workgroupId]);
+		// Delete the user from the events where the user was invited
+		await client.query('DELETE FROM "UserEvent" WHERE userid = $1', [memberId]);
+		// Delete the member
+		const result = await client.query('DELETE FROM "UserWorkGroup" WHERE userid = $1 AND workgroup = $2 RETURNING *', [memberId, workgroupId]);
+		const member = result.rows[0];
+		client.release();
+		return member;
+	} catch (err) {
+		client.release();
+		throw err;
+	}
 };
 
 exports.getAllMembers = async (userId, workgroupId) => {
