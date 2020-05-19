@@ -112,24 +112,53 @@ exports.addMember = async (userId, workgroupId, memberId) => {
 };
 
 exports.removeMember = async (userId, workgroupId, memberId) => {
+	const documentService = require("./document");
+	const activityService = require("./activity");
+	const calendarService = require("./calendar");
+
 	// Get the workgroup
 	const workgroup = await this.getWorkgroup(userId, workgroupId);
-	// Check if the user is the owner of the workgroup
-	if (workgroup.owner !== userId || userId !== memberId) throw new Error("Solo il proprietario del workgroup può rimuovere questo membro");
+	// Check if the user can remove a member of the workgroup
+	if (workgroup.owner !== userId && userId !== memberId) throw new Error("Solo il proprietario del workgroup può rimuovere questo membro");
 	const client = await pool.connect();
 	try {
 		// Delete all the documents where the deleted user is the owner
-		await client.query('DELETE FROM "Document" WHERE owner = $1 AND workgroup = $2', [memberId, workgroupId]);
+		const docsResult = await client.query('SELECT id FROM "Document" WHERE owner = $1 AND workgroup = $2', [memberId, workgroupId]);
+		for (const doc of docsResult.rows) await documentService.delete(userId, doc.id, workgroupId);
+
 		// Delete the user from the document shared with the user
-		await client.query('DELETE FROM "UserDocument" WHERE userid = $1', [memberId]);
+		const userDocResult = await client.query(
+			'SELECT d.id FROM "Document" d, "UserDocument" ud WHERE ud.document = d.id AND d.workgroup = $2 AND ud.userid = $1',
+			[memberId, workgroupId]
+		);
+		for (const userDoc of userDocResult.rows)
+			await client.query('DELETE FROM "UserDocument" WHERE document = $1 AND userid = $2', [userDoc.id, memberId]);
+
 		// Delete all the tasks where the deleted user is the owner
-		await client.query('DELETE FROM "Task" WHERE owner = $1 AND workgroup = $2', [memberId, workgroupId]);
+		const tasksResult = await client.query(
+			'SELECT t.id, t.section FROM "Task" t, "Section" s WHERE t.section = s.id AND s.workgroup = $2 AND t.owner = $1',
+			[memberId, workgroupId]
+		);
+		for (const task of tasksResult.rows) await activityService.deleteTask(task.id, task.section, workgroupId, userId);
 		// Delete the user from the tasks assigned to the user
-		await client.query('DELETE FROM "UserTask" WHERE userid = $1', [memberId]);
+		const userTasksResult = await client.query(
+			'SELECT t.id FROM "Task" t, "Section" s, "UserTask" ut WHERE ut.task = t.id AND t.section = s.id AND s.workgroup = $2 AND ut.userid = $1',
+			[memberId, workgroupId]
+		);
+		for (const userTask of userTasksResult.rows)
+			await client.query('DELETE FROM "UserTask" WHERE task = $1 AND userid = $2', [userTask.id, memberId]);
+
 		// Delete all the events where the deleted user is the owner
-		await client.query('DELETE FROM "Event" WHERE owner = $1 AND workgroup = $2', [memberId, workgroupId]);
+		const eventsResult = await client.query('SELECT id FROM "Event" WHERE owner = $1 AND workgroup = $2', [memberId, workgroupId]);
+		for (const event of eventsResult.rows) await calendarService.deleteEvent(memberId, event.id);
 		// Delete the user from the events where the user was invited
-		await client.query('DELETE FROM "UserEvent" WHERE userid = $1', [memberId]);
+		const userEventsResult = await client.query(
+			'SELECT e.id FROM "Event" e, "UserEvent" ue WHERE ue.event = e.id AND ue.userid = $1 AND e.workgroup = $2',
+			[memberId, workgroupId]
+		);
+		for (const userEvent of userEventsResult.rows)
+			await client.query('DELETE FROM "UserEvent" WHERE event = $1 AND userid = $2', [userEvent.id, memberId]);
+
 		// Delete the member
 		const result = await client.query('DELETE FROM "UserWorkGroup" WHERE userid = $1 AND workgroup = $2 RETURNING *', [memberId, workgroupId]);
 		const member = result.rows[0];
