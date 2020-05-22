@@ -251,17 +251,18 @@ exports.editFolder = async (currentUser, idDocument, idWorkgroup, folder) => {
   //Se documento fa parte dello stesso stesso workgroup di cui fai parte
   //Se puoi vedere il documento
   if (!(await this.enabledToWatch(currentUser, idDocument, idWorkgroup)))
-    throw new Error("Accesso al documento negato");
+  throw new Error("Accesso al documento negato");
   //Se il documento è una cartella, verificare che la cartella padre non sia proprio questa cartella
   if (idDocument == folder)
-    throw new Error("Non puoi spostare la cartella in se stessa");
+  throw new Error("Non puoi spostare la cartella in se stessa");
   //Se la cartella padre è visibile all'utente corrente
-  if (!(await this.enabledToWatch(currentUser, folder, idWorkgroup)))
+  if (folder !== "root" && !(await this.enabledToWatch(currentUser, folder, idWorkgroup)))
     throw new Error(
       "Non puoi spostare il documento in una cartella non accessibile"
     );
   //Verificare che non esistono altri file con lo stesso nome
   const doc = await this.get(currentUser, idDocument, idWorkgroup);
+  folder = null;
   if (await this.isNameUsed(doc.name, doc.isfolder, folder))
     throw new Error("Esiste gia un documento con lo stesso nome");
   //Allora cambia padre al documento
