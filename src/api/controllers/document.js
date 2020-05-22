@@ -6,7 +6,8 @@ const documentService = require("../services/document");
 router.get("/:idDocument", async (req, res, next) => {
 	const { idDocument, idWorkgroup } = req.params;
 	const document = await documentService.get(req.currentUser, idDocument, idWorkgroup);
-	if (document === {}) res.send({ error: "Error", message: "Potresti aver richiesto un documento inesistente o di cui non hai l'accesso" });
+	if (Object.keys(document).length === 0)
+		res.send({ error: "Error", message: "Potresti aver richiesto un documento inesistente o di cui non hai l'accesso" });
 	else res.status(200).send({ data: document });
 });
 
