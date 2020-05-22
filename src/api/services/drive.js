@@ -136,8 +136,8 @@ exports.create = async (
     const fatherFolder = await this.getDocument(folder);
     if (Object.keys(fatherFolder).length > 0 && !fatherFolder.isfolder)
       throw new Error("La cartella padre non è una cartella");
-    if (await documentService.isNameUsed(name, isFolder, folder))
-      throw new Error("Il nome del file viola in vincolo di unique");
+    // if (await documentService.isNameUsed(name, isFolder, folder))
+    //   throw new Error("Il nome del file viola in vincolo di unique");
     const sqlFolder = `INSERT INTO "Document"(name, creationdate, isfolder, isnote, size, folder, workgroup, owner) 
         VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`;
     try {

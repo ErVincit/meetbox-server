@@ -237,8 +237,8 @@ exports.editName = async (currentUser, idDocument, idWorkgroup, name) => {
     throw new Error("Accesso al documento negato");
   //Verificare che non esistono altri file con lo stesso nome
   const doc = await this.get(currentUser, idDocument, idWorkgroup);
-  if (await this.isNameUsed(name, doc.isfolder, doc.folder))
-    throw new Error("Esiste gia un documento con lo stesso nome");
+  // if (await this.isNameUsed(name, doc.isfolder, doc.folder))
+  //   throw new Error("Esiste gia un documento con lo stesso nome");
   //Allora edit il documento
   await pool.query('UPDATE "Document" SET name = $1 WHERE id = $2', [
     name,
@@ -262,9 +262,10 @@ exports.editFolder = async (currentUser, idDocument, idWorkgroup, folder) => {
     );
   //Verificare che non esistono altri file con lo stesso nome
   const doc = await this.get(currentUser, idDocument, idWorkgroup);
-  folder = null;
-  if (await this.isNameUsed(doc.name, doc.isfolder, folder))
-    throw new Error("Esiste gia un documento con lo stesso nome");
+  if (folder === "root") folder = null;
+  // console.log("Arrvo qui troiett", doc)
+  // if (await this.isNameUsed(doc.name, doc.isfolder, folder))
+  //   throw new Error("Esiste gia un documento con lo stesso nome");
   //Allora cambia padre al documento
   await pool.query(`UPDATE "Document" SET folder = $1 WHERE id = $2`, [
     folder,
@@ -281,15 +282,23 @@ exports.enabledToWatch = async (currentUser, idDocument, idWorkgroup) => {
   return false;
 };
 
-exports.isNameUsed = async (name, isFolder, idFolder) => {
-  try {
-    const res = await pool.query(
-      `SELECT * FROM "Document" d WHERE d.name = $1 AND d.isfolder = $2 AND d.folder = $3;`,
-      [name, isFolder, idFolder]
-    );
-    if (res.rowCount > 0) return true;
-    return false;
-  } catch (err) {
-    throw new Error("Errore esecuzione query di controllo");
-  }
-};
+// exports.isNameUsed = async (name, isFolder, idFolder) => {
+//   try {
+//     var res = {};
+//     if (idFolder) {
+//       await pool.query(
+//         `SELECT * FROM "Document" d WHERE d.name = $1 AND d.isfolder = $2 AND d.folder = $3;`,
+//         [name, isFolder, idFolder]
+//       );
+//     } else {
+//       res = await pool.query(
+//         `SELECT * FROM "Document" d WHERE d.name = $1 AND d.isfolder = $2 AND d.folder is NULL;`,
+//         [name, isFolder]
+//       );
+//     }
+//     if (res.rowCount > 0) return true;
+//     return false;
+//   } catch (err) {
+//     throw new Error("Errore esecuzione query di controllo");
+//   }
+// };
