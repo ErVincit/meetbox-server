@@ -28,7 +28,7 @@ router.get("/validate", async (req, res, next) => {
 		const user = await loginService.getUser(value.iduser);
 		return res.status(200).send({ data: user });
 	}
-	return res.sendStatus(401);
+	return res.status(200).send({error : "Autenticazione fallita"});
 });
 
 router.put("/signout", async (req, res) => {
