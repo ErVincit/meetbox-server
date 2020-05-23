@@ -2,19 +2,23 @@
 require("dotenv").config();
 
 const express = require("express");
+const serveStatic = require("serve-static");
+const path = require("path");
 const cookieSession = require("cookie-session");
 const cors = require("cors");
 const main = express();
 
-main.use(cors({ credentials: true, origin: (_origin, callback) => callback(null, true) }));
-main.use(express.urlencoded({ extended: true }));
-main.use(express.json());
-main.use(
-	cookieSession({
-		name: "token",
-		secret: process.env.SESSION_SECRET,
-	})
-);
+main.use("/", serveStatic(path.join(__dirname, "/dist")));
+
+// main.use(cors({ credentials: true, origin: (_origin, callback) => callback(null, true) }));
+// main.use(express.urlencoded({ extended: true }));
+// main.use(express.json());
+// main.use(
+// 	cookieSession({
+// 		name: "token",
+// 		secret: process.env.SESSION_SECRET,
+// 	})
+// );
 
 // main.get("/creaDB", async (req, res) => {
 // 	const pool = require("./database");
@@ -252,8 +256,8 @@ main.use(
 // 	res.send({ data });
 // });
 
-const api = require("./api/api");
-main.use("/api", api);
+// const api = require("./api/api");
+// main.use("/api", api);
 
 main.listen(process.env.PORT, () => {
 	console.log("Server created");
