@@ -8,17 +8,15 @@ const cookieSession = require("cookie-session");
 const cors = require("cors");
 const main = express();
 
-main.use("/", serveStatic(path.join(__dirname, "/dist")));
-
-// main.use(cors({ credentials: true, origin: (_origin, callback) => callback(null, true) }));
-// main.use(express.urlencoded({ extended: true }));
-// main.use(express.json());
-// main.use(
-// 	cookieSession({
-// 		name: "token",
-// 		secret: process.env.SESSION_SECRET,
-// 	})
-// );
+main.use(cors({ credentials: true, origin: (_origin, callback) => callback(null, true) }));
+main.use(express.urlencoded({ extended: true }));
+main.use(express.json());
+main.use(
+	cookieSession({
+		name: "token",
+		secret: process.env.SESSION_SECRET,
+	})
+);
 
 // main.get("/creaDB", async (req, res) => {
 // 	const pool = require("./database");
@@ -256,8 +254,11 @@ main.use("/", serveStatic(path.join(__dirname, "/dist")));
 // 	res.send({ data });
 // });
 
-// const api = require("./api/api");
-// main.use("/api", api);
+const api = require("./api/api");
+main.use("/api", api);
+
+main.use("/", serveStatic(path.join(__dirname, "/dist")));
+main.get("*", (req, res)  =>  res.sendFile(path.join(__dirname, "/dist/index.html")));
 
 main.listen(process.env.PORT, () => {
 	console.log("Server created");
