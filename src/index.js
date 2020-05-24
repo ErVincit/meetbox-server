@@ -92,7 +92,7 @@ main.use(
 // 	    title character varying(100) NOT NULL,
 // 	    description character varying(1000),
 // 	    section integer NOT NULL,
-// 	    label integer NOT NULL,
+// 	    label integer,
 // 	    deadline timestamp with time zone,
 // 	    owner integer NOT NULL,
 // 	    index integer NOT NULL,
