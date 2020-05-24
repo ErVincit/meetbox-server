@@ -83,8 +83,8 @@ router.delete("/:idWorkgroup/member/:idMember", async (req, res) => {
 	try {
 		const { idWorkgroup, idMember } = req.params;
 		const userId = req.currentUser;
-		await workgroupService.removeMember(userId, idWorkgroup, idMember);
-		res.sendStatus(200);
+		const member = await workgroupService.removeMember(userId, idWorkgroup, idMember);
+		res.send({ data: member });
 	} catch (err) {
 		res.json({ error: err.name, message: err.message });
 	}
