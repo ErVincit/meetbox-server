@@ -180,7 +180,7 @@ exports.deleteTask = async (taskId, sectionId, workgroupId, userId) => {
 		await client.query('DELETE FROM "UserTask" WHERE task = $1', [taskId]);
 		// Delete all the attachments of the task
 		const attachments = await this.getAllAttachments(taskId, sectionId, workgroupId, userId);
-		for (const attachment of attachments.rows) await documentService.delete(userId, attachment.id, workgroupId);
+		for (const attachment of attachments) await documentService.delete(userId, attachment.id, workgroupId);
 		// Delete the task
 		const results = await client.query('DELETE FROM "Task" WHERE id = $1 AND section = $2 RETURNING *', [taskId, sectionId]);
 		const index = results.rows[0].index;
