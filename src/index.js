@@ -257,6 +257,8 @@ main.use(
 const api = require("./api/api");
 main.use("/api", api);
 
+main.get("/img/logo", (req, res) => res.sendFile(__dirname + "/assets/logo.svg"));
+
 main.use("/", serveStatic(path.join(__dirname, "/dist")));
 main.get("*", (req, res)  =>  res.sendFile(path.join(__dirname, "/dist/index.html")));
 
