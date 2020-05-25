@@ -178,6 +178,8 @@ exports.deleteTask = async (taskId, sectionId, workgroupId, userId) => {
 			throw new Error("Operazione fallita. Potresti aver richiesto di accedere ad una risorsa inesistene o di cui non hai l'accesso");
 		// Delete all the members of the task
 		await client.query('DELETE FROM "UserTask" WHERE task = $1', [taskId]);
+		// Delete all the attachments of the task
+		await client.query('DELETE FROM "Document" WHERE task = $1', [taskId]);
 		// Delete the task
 		const results = await client.query('DELETE FROM "Task" WHERE id = $1 AND section = $2 RETURNING *', [taskId, sectionId]);
 		const index = results.rows[0].index;
