@@ -36,9 +36,7 @@ exports.deleteSection = async (sectionId, workgroupId, userId) => {
 			throw new Error("Operazione fallita. Potresti aver richiesto di accedere ad una risorsa inesistene o di cui non hai l'accesso");
 		// Delete all the members of the task
 		const result = await client.query('SELECT * FROM "Task" WHERE section = $1', [sectionId]);
-		for (const task of result.rows) await client.query('DELETE FROM "UserTask" WHERE task = $1', [task.id]);
-		// Delete all the tasks of the section
-		await client.query('DELETE FROM "Task" WHERE section = $1', [sectionId]);
+		for (const task of result.rows) await this.deleteTask(task.id, sectionId, workgroupId, userId);
 		// Delete the section
 		const results = await client.query('DELETE FROM "Section" WHERE id = $1 RETURNING *', [sectionId]);
 		client.release();
@@ -164,6 +162,9 @@ exports.createTask = async (sectionId, workgroupId, userId, title, description, 
 	}
 };
 
+const deleteURL = "http://meetbox.altervista.org/delete.php";
+const request = require("request");
+
 exports.deleteTask = async (taskId, sectionId, workgroupId, userId) => {
 	const client = await pool.connect();
 	try {
@@ -178,6 +179,9 @@ exports.deleteTask = async (taskId, sectionId, workgroupId, userId) => {
 			throw new Error("Operazione fallita. Potresti aver richiesto di accedere ad una risorsa inesistene o di cui non hai l'accesso");
 		// Delete all the members of the task
 		await client.query('DELETE FROM "UserTask" WHERE task = $1', [taskId]);
+		// Delete all the attachments of the task
+		const attachments = await client.query('DELETE FROM "Document" WHERE task = $1 RETURNING *', [taskId]);
+		for (const attachment of attachments.rows) request.post(deleteURL, { form: { path: attachment.path } });
 		// Delete the task
 		const results = await client.query('DELETE FROM "Task" WHERE id = $1 AND section = $2 RETURNING *', [taskId, sectionId]);
 		const index = results.rows[0].index;
