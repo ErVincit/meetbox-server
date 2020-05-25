@@ -162,8 +162,7 @@ exports.createTask = async (sectionId, workgroupId, userId, title, description, 
 	}
 };
 
-const deleteURL = "http://meetbox.altervista.org/delete.php";
-const request = require("request");
+const documentService = require("./document");
 
 exports.deleteTask = async (taskId, sectionId, workgroupId, userId) => {
 	const client = await pool.connect();
@@ -180,8 +179,8 @@ exports.deleteTask = async (taskId, sectionId, workgroupId, userId) => {
 		// Delete all the members of the task
 		await client.query('DELETE FROM "UserTask" WHERE task = $1', [taskId]);
 		// Delete all the attachments of the task
-		const attachments = await client.query('DELETE FROM "Document" WHERE task = $1 RETURNING *', [taskId]);
-		for (const attachment of attachments.rows) request.post(deleteURL, { form: { path: attachment.path } });
+		const attachments = await this.getAllAttachments(taskId, sectionId, workgroupId, userId);
+		for (const attachment of attachments.rows) await documentService.delete(userId, attachment.id, workgroupId);
 		// Delete the task
 		const results = await client.query('DELETE FROM "Task" WHERE id = $1 AND section = $2 RETURNING *', [taskId, sectionId]);
 		const index = results.rows[0].index;
