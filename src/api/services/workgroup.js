@@ -81,7 +81,8 @@ exports.deleteWorkgroup = async (userId, workgroupId) => {
 		// Check if the user is the owner of the workgroup
 		if (workgroup.owner !== userId) throw new Error("Solo il proprietario del workgroup può eliminarlo");
 		// Delete all members of the workgroup
-		await client.query('DELETE FROM "UserWorkGroup" WHERE workgroup = $1', [workgroupId]);
+		const members = await client.query('SELECT userid FROM "UserWorkGroup" WHERE workgroup = $1', [workgroupId]);
+		for (const member of members) await this.removeMember(userId, workgroupId, member.id);
 		// Delete the workgroup
 		const results = await client.query('DELETE FROM "WorkGroup" WHERE id = $1 RETURNING *', [workgroupId]);
 		client.release();
