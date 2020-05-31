@@ -17,9 +17,11 @@ che riceve il server in Node al server in PHP.
 
 ### Schema relazione del DB
 
+![meetbox-drive](DB_Schema.png)
 
 ### Gestione sessioni utente
-
+Per la gestione delle sessioni abbiamo deciso di usare un JSON Web Token (JWT), ovvero un JSON criptato mediante una chiave che permette la memorizzazione di qualsiasi informazione. Nel nostro caso, qualora un utente si loggasse correttamente, andremmo a creare un cookie di sessione che avrà come valore un JWT, contenente l'id dell'utente autenticato (assegnatogli durante la registrazione).
+Ad ogni richiesta il cookie che riceveremo nel nostro server verrà decodificato e saranno prese le informazioni contenute nel JWT, ovvero l'id dell'utente. In questo modo possiamo non memorizzare il cookie nel database poichè le informazioni saranno fornite direttamente dall'utente ad ogni richiesta in tutta sicurezza.
 
 ## Tecnologie
 - Node.js: come ambiente di esecuzione
