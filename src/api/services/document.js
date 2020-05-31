@@ -263,7 +263,6 @@ exports.editFolder = async (currentUser, idDocument, idWorkgroup, folder) => {
   //Verificare che non esistono altri file con lo stesso nome
   const doc = await this.get(currentUser, idDocument, idWorkgroup);
   if (folder === "root") folder = null;
-  // console.log("Arrvo qui troiett", doc)
   // if (await this.isNameUsed(doc.name, doc.isfolder, folder))
   //   throw new Error("Esiste gia un documento con lo stesso nome");
   //Allora cambia padre al documento
